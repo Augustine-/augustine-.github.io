@@ -7,10 +7,6 @@
   margin-top: 2em;
 }
 
-.secondary{
-
-}
-
 .row{
   height: 50%;
   display: flex;
@@ -59,6 +55,9 @@ li{
   background-color: black;
   transition: background-color 0.05s;
   border-radius: 8px;
+  -webkit-box-shadow: inset 0px 2px 45px 38px rgba(255,255,255,1);
+  -moz-box-shadow: inset 0px 2px 45px 38px rgba(255,255,255,1);
+  box-shadow: inset 0px 2px 45px 38px rgba(255,255,255,1);11
 }
 
 /* flip speed goes here */
