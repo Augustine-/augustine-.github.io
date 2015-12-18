@@ -13,4 +13,24 @@ $(document).ready(function () {
     });
   }
 
+  setInterval(function(){
+    var colors = [
+    '#D2100B',
+    '#F5892d',
+    '#F5AE2D',
+    '#BEC400',
+    '#81BD09',
+    '#078F58',
+    '#077A7F',
+    '#4353B7',
+    '#6F47B3',
+    '#AF1C08'
+    ];
+
+    for (var i = colors.length - 1; i >= 0; i--) {
+      $('.business-card').css('background-color', colors[i]);
+    };
+  }, 500);
+
+
 });
