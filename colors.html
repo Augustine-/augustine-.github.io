@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>Pick A Color, Any Color!</title>
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+	<script src="scripts/colors.js"></script>
+
+	<link rel="stylesheet" href="stylesheets/index.css">
+</head>
+<body>
+
+	<div id="colorpicker">
+			<p>Pick A Color! Any Color!</p>
+		<canvas id="colorcanvas" width="256" height="256"></canvas>
+		<div><label>RGB: </label> <input type="text" id="rgb"/></div>
+		<div><label>HEX: </label> <input type="text" id="hex"/></div>
+		<div><label>HSV: </label> <input type="text" id="hsv"/></div>
+		<a href="#" id="reset">reset palette</a>
+		<br>
+		<a href="www.augustine.io">return</a>
+	</div>
+
+	<div id="palette">
+		<ul>
+		</ul>
+	</div>
+</body>
+</html>
