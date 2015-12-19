@@ -14,21 +14,21 @@ $(document).ready(function () {
   }
 
 
-  // Cycle through a 3-color array, produces a stark contrash to the monochrome.
+  // Cycle through a 3-color array, produces a stark contrast to the monochrome.
   var colors = [
-    'cyan',
-    'magenta',
-    'yellow',
+    '#00b2b2',
+    '#b200b2',
+    '#b2b200',
   ];
 
   var i = 0;
 
-  // setInterval(function(){
-  //     $('.business-card').css('background-color', colors[i]);
-  //
-  //     i++;
-  //     if (i > 2) {
-  //       i = 0;
-  //     }
-  // }, 100);
+  setInterval(function(){
+      $('.business-card').css('background-color', colors[i]);
+
+      i++;
+      if (i > 2) {
+        i = 0;
+      }
+  }, 100);
 });
