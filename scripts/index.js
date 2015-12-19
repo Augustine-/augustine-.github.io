@@ -23,12 +23,12 @@ $(document).ready(function () {
 
   var i = 0;
 
-  setInterval(function(){
-      $('.business-card').css('background-color', colors[i]);
-
-      i++;
-      if (i > 2) {
-        i = 0;
-      }
-  }, 100);
+  // setInterval(function(){
+  //     $('.business-card').css('background-color', colors[i]);
+  //
+  //     i++;
+  //     if (i > 2) {
+  //       i = 0;
+  //     }
+  // }, 100);
 });

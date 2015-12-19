@@ -1,0 +1,44 @@
+.hex-row{
+  position: relative;
+  top: 4em;
+  display: table;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hex:before,
+.hex:after{
+  content: " ";
+  width: 0;
+  left: 0;
+  border-left: 64px solid transparent;
+  border-right: 64px solid transparent;
+  position: absolute;
+}
+
+.hex:before{
+  bottom: 100%;
+  border-bottom: 36.95px solid #66C;
+}
+
+.hex{
+  width: 128px;
+  height: 72px;
+  background-color: #66C;
+  float: left;
+  position: relative;
+  margin-top: 20px;
+  margin-right: 0px;
+  margin-bottom: 31px;
+  margin-left: 20px;
+}
+
+.hex:after{
+  top: 100%;
+  width: 0;
+  border-top: 36.95px solid #66C;
+}
+
+.hex:nth-of-type(1){
+  margin-left: 0;
+}
