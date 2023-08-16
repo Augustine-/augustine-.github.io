@@ -1,0 +1,75 @@
+@font-face {
+    font-family: 'MicroFLF';
+    src:url('/v2/assets/fonts/MicroFLF.ttf') format('truetype');
+}
+  
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.front, .back {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+    font-family: 'MicroFLF';
+    height: 101%;
+    width: 101%;
+    backface-visibility: hidden;
+    background-color: white;
+    position: absolute;
+    top: 0;
+    left: 0;
+    /* border-radius: 6px; */
+}
+
+.colors {
+    z-index: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 44%;
+    height: 33%;
+    perspective: 1000px;
+    background-color: violet;
+    transition: background-color 0.05s;
+    /* border-radius: 8px; */
+    -webkit-box-shadow: inset 0px 2px 45px 38px rgba(255,255,255,1);
+    -moz-box-shadow: inset 0px 2px 45px 38px rgba(255,255,255,1);
+    box-shadow: inset 0px 2px 45px 38px rgba(255,255,255,1);
+}
+
+.flip-container {
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+    transition: 1.5s;
+    transform-style: preserve-3d;
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* hide secondary pane during swap */
+
+/* primary pane, placed above secondary */
+.front {
+z-index: 2;
+/* for firefox 31 */
+transform: rotateY(0deg);
+}
+
+/* secondary, initially hidden pane */
+.back {
+transform: rotateY(180deg);
+}

@@ -1,100 +1,43 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Folio</title>
-  <script src="https://code.jquery.com/jquery-latest.js"></script>
-  <script src="scripts/index.js"></script>
-  <link rel="stylesheet" href="stylesheets/index.css">
-  <link rel="stylesheet" href="stylesheets/hexagons.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>augustine dot io</title>
+
+    <link rel="stylesheet" type="text/css" href="styles/business-card.css">
+    <link rel="stylesheet" type="text/css" href="styles/hex.css">
+    <script src="scripts/flip.js"></script>
 </head>
 <body>
-
-  <div class="business-card">
-    <div class="card" data-degrees-rotated=0>
-      <div class="primary">
-        <div class="content">
-          <h1>Augustine Wittkower</h1>
-          <p>
-            Software Engineer
-          </p>
-          <p>
-            <a href="https://www.github.com/Augustine-">github</a>
-          </p>
-          <p>
-            <a href="https://www.linkedin.com/in/augustineprime">linkedin</a>
-          </p>
-          <p>
-            <a href="javascript:;"class="projects">projects</a>
-          </p>
-          <p>
-            augustine.wittkower@gmail.com
-          </p>
-          <p>
-            415 937 8666
-          </p>
+    <div class="colors"> 
+      <div class="flip-container" data-degrees-rotated=0>
+        <div class="front">
+            <h1>Augustine Wittkower</h1>
+              Software Engineer
+            <br>
+            <br>
+              <a href="https://www.github.com/Augustine-">github</a>
+            <br>
+              <a href="https://www.linkedin.com/in/augustineprime">linkedin</a>
+            <br>
+              <a href="javascript:;"class="projects">projects</a>
+            <br>
+              augustine.wittkower@gmail.com
+            <br>
+            <br>
+              415 937 8666
+        </div>
+        <div class="back">
+            <h1>Projects</h1>
+            <br>
+            <div class="hex">
+              <a href="https://rankonesolutions.github.io/Always-On-Time">always on time</a>
+            </div>
+            <br><br>
+            <i>catch you on the</i> <a href="javascript:;"class="projects">flip</a>
         </div>
       </div>
-      <div class="secondary">
-        <div class="hex-row">
-          <div class="hex">
-            <span class="hex-text">
-              <p>
-                <a href="https://twiiter.herokuapp.com/" class="okz">twiiter</a>
-              </p>
-            </span>
-            <span class="hex-text sub-text">ruby on rails</span>
-          </div>
-          <div class="hex">
-            <span class="hex-text">
-              <p>
-                <a href="https://rankonesolutions.github.io/Always-On-Time">always on time</a>
-              </p>
-            </span>
-            <span class="hex-text sub-text">html/css/javascript</span>
-          </div>
-        </div>
-        <div class="hex-row">
-          <div class="hex">
-            <span class="hex-text">
-              <p>
-                <a href="colors">color picker</a>
-              </p>
-            </span>
-            <span class="hex-text sub-text">html/css/javascript</span>
-          </div>
-          <div class="hex">
-            <span class="hex-text">
-              <a href="javascript:;"class="projects">back to main</a>
-            </span>
-          </div>
-          <div class="hex">
-            <span class="hex-text">
-              <p>
-                <a href="towers">towers of hanoi</a>
-              </p>
-            </span>
-            <span class="hex-text sub-text">html/css/javascript</span>
-          </div>
-        </div>
-        <div class="hex-row">
-          <div class="hex">
-            <span class="hex-text">
-              <p>
-                <a href="https://www.github.com">advent of code</a>
-              </p>
-            </span>
-            <span class="hex-text sub-text">ruby</span>
-          </div>
-          <div class="hex">
-            <span class="hex-text">
-              <p>
-                <a href="https://themutedjeweltones.com">muted jewel tones</a>
-              </p>
-            </span>
-            <span class="hex-text sub-text">html/css/javascript</span>
-          </div>
-        </div>
-      </div>
-    </body>
-  </html>
+    </div>
+</body>
+</html>
