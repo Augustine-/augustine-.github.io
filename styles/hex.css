@@ -1,3 +1,10 @@
+.projects{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: row;
+  text-align: center;
+}
 
 .hex:before,
 .hex:after{
@@ -20,12 +27,11 @@
   width: 128px;
   height: 72px;
   background-color: #66C;
-  float: left;
   position: relative;
   margin-top: 20px;
-  margin-right: 0px;
+  margin-right: 20px;
   margin-bottom: 31px;
-  /* margin-left: 20px; */
+  margin-left: 20px;
 }
 
 .hex:after{
