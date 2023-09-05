@@ -24,4 +24,15 @@ document.addEventListener('DOMContentLoaded', function(){
         businessCard.style.backgroundColor = colors[i];
         i = (i + 1) % colors.length;
     }, 100);
-})
+
+    // Project Descriptions
+    document.querySelectorAll('.hex').forEach((hex) => {
+        hex.addEventListener('mouseover', function() {
+        document.getElementById('project-description').innerText = 'Your description here';
+        });
+        hex.addEventListener('mouseout', function() {
+        document.getElementById('project-description').innerText = '';
+        });
+    });
+});
+
