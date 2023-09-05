@@ -10,7 +10,23 @@
     <script src="scripts/flip.js"></script>
 </head>
 <body>
-  <div id="project-description"></div>
+    <div class="project-description hidden" id="description-TempGraph">
+      <h2>TempGraph</h2>
+      One hot day, I wondered if opening my PC case and pointing a big fan at the interior would make a measurable difference on it's CPU and GPU temperatures.
+      <br><br>
+      A cursory glance around the internet revealed extant tools from the too-simple to the too-complex, nothing that brings up a time-series chart with a single click.
+      <br><br>
+      I also wanted to learn some C#. So: <a href="https://github.com/Augustine-/TempGraph">TempGraph</a>.
+    </div>
+    <div class="project-description hidden" id="description-AlwaysOnTime">
+      <h2>always on time</h2>
+      You know the old 'set your alarm clock to be 10 minutes fast' trick? 
+      <br><br>
+      It doesn't work. You look at the clock, remember what you did, and ignore it.
+      <br><br>
+      <a href="https://rankonesolutions.github.io/Always-On-Time">always on time</a> fixes this by randomizing the offset. 
+    </div>
+  </div>
     <div class="colors"> 
       <div class="flip-container" data-degrees-rotated=0>
         <div class="front">
@@ -33,10 +49,10 @@
           <h1>Projects</h1>
           <div class="projects">
             <br>
-            <div class="hex">
+            <div class="hex" id="TempGraph">
               <a href="https://github.com/Augustine-/TempGraph">TempGraph</a>
             </div>
-            <div class="hex">
+            <div class="hex" id="AlwaysOnTime">
               <a href="https://rankonesolutions.github.io/Always-On-Time">always on time</a>
             </div>
             <br>

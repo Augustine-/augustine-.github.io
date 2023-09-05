@@ -20,13 +20,19 @@ document.addEventListener('DOMContentLoaded', function () {
         businessCard.style.backgroundColor = colors[i];
         i = (i + 1) % colors.length;
     }, 100);
-    // Project Descriptions
+    // Text animation
+    var currentDescriptionDiv;
     document.querySelectorAll('.hex').forEach(function (hex) {
         hex.addEventListener('mouseover', function () {
-            document.getElementById('project-description').innerText = 'Your description here';
-        });
-        hex.addEventListener('mouseout', function () {
-            document.getElementById('project-description').innerText = '';
+            var projectId = this.id;
+            var descriptionDiv = document.getElementById("description-".concat(projectId));
+            if (currentDescriptionDiv) {
+                currentDescriptionDiv.classList.remove('visible');
+                currentDescriptionDiv.classList.add('hidden');
+            }
+            descriptionDiv.classList.remove('hidden');
+            descriptionDiv.classList.add('visible');
+            currentDescriptionDiv = descriptionDiv;
         });
     });
 });

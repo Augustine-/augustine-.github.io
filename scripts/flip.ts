@@ -24,15 +24,27 @@ document.addEventListener('DOMContentLoaded', function(){
         businessCard.style.backgroundColor = colors[i];
         i = (i + 1) % colors.length;
     }, 100);
+    
+    // Text animation
+    let currentDescriptionDiv;
 
-    // Project Descriptions
     document.querySelectorAll('.hex').forEach((hex) => {
-        hex.addEventListener('mouseover', function() {
-        document.getElementById('project-description').innerText = 'Your description here';
-        });
-        hex.addEventListener('mouseout', function() {
-        document.getElementById('project-description').innerText = '';
-        });
+      hex.addEventListener('mouseover', function() {
+        const projectId = this.id;
+        const descriptionDiv = document.getElementById(`description-${projectId}`);
+    
+        if (currentDescriptionDiv) {
+          currentDescriptionDiv.classList.remove('visible');
+          currentDescriptionDiv.classList.add('hidden');
+        }
+    
+        descriptionDiv.classList.remove('hidden');
+        descriptionDiv.classList.add('visible');
+    
+        currentDescriptionDiv = descriptionDiv;
+      });
     });
+    
+    
 });
 
