@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function(){
     flipIt(".flip", ".flip-container");
+    tidyUp();
 
     // A monodirectional flip, like a revolving door. 
     function flipIt(trigger: string, toBeFlipped: string){
@@ -11,8 +12,14 @@ document.addEventListener('DOMContentLoaded', function(){
                 let degreesRotated = Number(targetElement.getAttribute('data-degrees-rotated')) || 0;
                 degreesRotated += 180;    
                 targetElement.setAttribute('data-degrees-rotated', String(degreesRotated));
-                targetElement.style.transform = 'rotateY(' + degreesRotated + 'deg)'; 
+                targetElement.style.transform = 'rotateY(' + degreesRotated + 'deg)';                
             })
+        })
+    }
+
+    function tidyUp() {
+        document.getElementById('return')?.addEventListener('click', function(){
+            hideDescriptions();
         })
     }
 
@@ -77,5 +84,13 @@ document.addEventListener('DOMContentLoaded', function(){
           }, 1);
     }
 
+    function hideDescriptions() {
+        let visible = document.getElementsByClassName("visible");
+        
+        for (var i = 0; i < visible.length; i++) {
+            visible[i].classList.add('hidden');
+            visible[i].classList.remove('visible');
+        }
+    }
 });
 

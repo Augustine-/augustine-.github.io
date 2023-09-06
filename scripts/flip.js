@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     flipIt(".flip", ".flip-container");
+    tidyUp();
     // A monodirectional flip, like a revolving door. 
     function flipIt(trigger, toBeFlipped) {
         var triggerElements = document.querySelectorAll(trigger);
@@ -11,6 +12,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 targetElement.setAttribute('data-degrees-rotated', String(degreesRotated));
                 targetElement.style.transform = 'rotateY(' + degreesRotated + 'deg)';
             });
+        });
+    }
+    function tidyUp() {
+        var _a;
+        (_a = document.getElementById('return')) === null || _a === void 0 ? void 0 : _a.addEventListener('click', function () {
+            hideDescriptions();
         });
     }
     var colors = ['#00b2b2', '#b200b2', '#b2b200'];
@@ -62,5 +69,12 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(function () {
             document.getElementById('links').classList.add('active');
         }, 1);
+    }
+    function hideDescriptions() {
+        var visible = document.getElementsByClassName("visible");
+        for (var i = 0; i < visible.length; i++) {
+            visible[i].classList.add('hidden');
+            visible[i].classList.remove('visible');
+        }
     }
 });
