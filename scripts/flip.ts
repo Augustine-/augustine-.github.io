@@ -25,7 +25,9 @@ document.addEventListener('DOMContentLoaded', function(){
         i = (i + 1) % colors.length;
     }, 100);
     
-    // Text animation
+    /// Text animations
+    
+    // Project Description
     let currentDescriptionDiv;
 
     document.querySelectorAll('.hex').forEach((hex) => {
@@ -45,6 +47,35 @@ document.addEventListener('DOMContentLoaded', function(){
       });
     });
     
+    // Name fade-in
+    let letters = document.getElementsByClassName('title-letter');
+
+    setTimeout(() => {
+      let lastLetterIndex = letters.length - 1;
     
+      for (let i = 0; i <= lastLetterIndex; i++) {
+        setTimeout(() => {
+          letters[i].classList.add('active');
+    
+          if (i === lastLetterIndex) {
+            showSubTitle();
+            showLinks();
+          }
+        }, 60 * i);
+      }
+    }, 500);
+    
+    function showSubTitle() {
+      setTimeout(() => {
+        document.getElementById('sub-title').classList.add('active');
+      }, 1);
+    }
+
+    function showLinks() {
+        setTimeout(() => {
+            document.getElementById('links').classList.add('active');
+          }, 1);
+    }
+
 });
 

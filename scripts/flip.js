@@ -20,7 +20,8 @@ document.addEventListener('DOMContentLoaded', function () {
         businessCard.style.backgroundColor = colors[i];
         i = (i + 1) % colors.length;
     }, 100);
-    // Text animation
+    /// Text animations
+    // Project Description
     var currentDescriptionDiv;
     document.querySelectorAll('.hex').forEach(function (hex) {
         hex.addEventListener('mouseover', function () {
@@ -35,4 +36,31 @@ document.addEventListener('DOMContentLoaded', function () {
             currentDescriptionDiv = descriptionDiv;
         });
     });
+    // Name fade-in
+    var letters = document.getElementsByClassName('title-letter');
+    setTimeout(function () {
+        var lastLetterIndex = letters.length - 1;
+        var _loop_1 = function (i_1) {
+            setTimeout(function () {
+                letters[i_1].classList.add('active');
+                if (i_1 === lastLetterIndex) {
+                    showSubTitle();
+                    showLinks();
+                }
+            }, 60 * i_1);
+        };
+        for (var i_1 = 0; i_1 <= lastLetterIndex; i_1++) {
+            _loop_1(i_1);
+        }
+    }, 500);
+    function showSubTitle() {
+        setTimeout(function () {
+            document.getElementById('sub-title').classList.add('active');
+        }, 1);
+    }
+    function showLinks() {
+        setTimeout(function () {
+            document.getElementById('links').classList.add('active');
+        }, 1);
+    }
 });
