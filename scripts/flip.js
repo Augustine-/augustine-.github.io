@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
-    flipIt(".projects", ".flip-container");
+    flipIt(".flip", ".flip-container");
     // A monodirectional flip, like a revolving door. 
     function flipIt(trigger, toBeFlipped) {
         var triggerElements = document.querySelectorAll(trigger);
