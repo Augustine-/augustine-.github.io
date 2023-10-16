@@ -3,6 +3,9 @@ let nLayers = 5;   // Number of layers
 let radius = 400;  // Initial radius
 let cStart, cEnd; // Color arrays
 let lerpAmts; // Color interpolation
+let rotating = false;
+let rotationAngles = Array(9).fill(0);
+let rotationSpeed = 0.005;
 
 
 function setup() {
@@ -25,6 +28,7 @@ function setup() {
 function draw() {
   background(0);
   translate(width / 2, height / 2);
+
   // Precompute trigonometric values
   let cosValues = new Array(nPoints);
   let sinValues = new Array(nPoints);
@@ -40,6 +44,15 @@ function draw() {
   
   //Layers
   for(let layer = 0; layer < nLayers; layer++) {
+    push(); //Save layer state
+
+    // Per-layer rotation
+    if (rotating) {
+        let direction = (layer % 2 === 0) ? 1 : -1; // Alternate
+        rotationAngles[layer] += rotationSpeed * direction;
+        rotate(rotationAngles[layer]);
+    }
+
     let thisRadius = map(layer, 0, nLayers, radius, 0);
     if (lerpAmts[layer] >= 1) {
       lerpAmts[layer] = 0;
@@ -65,11 +78,13 @@ function draw() {
       
       line(x, y, next_x, next_y);
     }
+
+    pop(); //Restore layer state
   }
 
   fill(255);
 //   let fps = int(frameRate());
-  text("Controls: \n\n1-9\nmousewheel\nmouse position", 20 - width / 2, 20 - height / 2);
+  text("Controls: \n\n1-9\nmousewheel\nmouse position\nspacebar\nclick to fullscreen", 20 - width / 2, 20 - height / 2);
 }
 
 // Toggle fullscreen
@@ -108,14 +123,18 @@ function keyPressed() {
       
       nLayers = newLayers;
     }
+
+    if (key == " "){
+        rotating = !rotating;
+    }
   }
 
-  function mouseWheel(event) {
+function mouseWheel(event) {
     nPoints += event.delta > 0 ? -1 : 1;
     nPoints = constrain(nPoints, 2, 100); // Keep nPoints between 2 and 100
-    
+
     // Ensure step doesn't exceed nPoints - 1
     let distToCenter = int(dist(mouseX, mouseY, width / 2, height / 2));
     step = int(map(distToCenter, 0, width / sqrt(2), 2, nPoints - 1));
-  }
+}
   
