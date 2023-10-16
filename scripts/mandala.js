@@ -1,5 +1,5 @@
-let nPoints = 60;  // Number of points
-let nLayers = 9;   // Number of layers
+let nPoints = 12;  // Number of points
+let nLayers = 5;   // Number of layers
 let radius = 400;  // Initial radius
 let cStart, cEnd; // Color arrays
 let lerpAmts; // Color interpolation
@@ -11,8 +11,6 @@ function setup() {
   strokeWeight(2);
   noFill();
   
-//   document.body.style.overflow = 'hidden';
-
   // Each layer gets it's own color.
   cStart = new Array(nLayers);
   cEnd = new Array(nLayers);
@@ -70,20 +68,54 @@ function draw() {
   }
 
   fill(255);
-  let fps = int(frameRate());
-  text("FPS: " + fps, 20 - width / 2, 20 - height / 2);
+//   let fps = int(frameRate());
+  text("Controls: \n\n1-9\nmousewheel\nmouse position", 20 - width / 2, 20 - height / 2);
 }
 
-  // Options
+// Toggle fullscreen
 function mousePressed() {
     let fs = fullscreen();
     fullscreen(!fs);
 }
 
+// Handle resizing after fs toggle (or otherwise)
 function windowResized() {
     if (fullscreen()) {
-      resizeCanvas(displayWidth, displayHeight);
+        resizeCanvas(displayWidth, displayHeight);
     } else {
-      resizeCanvas(windowWidth, windowHeight);
+        resizeCanvas(windowWidth, windowHeight);
+    }
+}
+
+//Interactive complexity
+function keyPressed() {
+    if (key >= '1' && key <= '9') {
+      let newLayers = int(key);
+      
+      // If increasing the number of layers, add new colors and lerp amounts
+      while (newLayers > cStart.length) {
+        cStart.push(color(random(255), random(255), random(255)));
+        cEnd.push(color(random(255), random(255), random(255)));
+        lerpAmts.push(0);
+      }
+      
+      // If decreasing the number of layers, remove excess colors and lerp amounts
+      while (newLayers < cStart.length) {
+        cStart.pop();
+        cEnd.pop();
+        lerpAmts.pop();
+      }
+      
+      nLayers = newLayers;
     }
   }
+
+  function mouseWheel(event) {
+    nPoints += event.delta > 0 ? -1 : 1;
+    nPoints = constrain(nPoints, 2, 100); // Keep nPoints between 2 and 100
+    
+    // Ensure step doesn't exceed nPoints - 1
+    let distToCenter = int(dist(mouseX, mouseY, width / 2, height / 2));
+    step = int(map(distToCenter, 0, width / sqrt(2), 2, nPoints - 1));
+  }
+  
