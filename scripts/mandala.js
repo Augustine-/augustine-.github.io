@@ -84,7 +84,7 @@ function draw() {
 
   fill(255);
 //   let fps = int(frameRate());
-  text("Controls: \n\n1-9\nmousewheel\nmouse position\nspacebar\nclick to fullscreen", 20 - width / 2, 20 - height / 2);
+  text("Controls: \n\n1-9\nmousewheel\nmouse position\nspacebar\nclick to fullscreen\n\npress b to return to augustine.io", 20 - width / 2, 20 - height / 2);
 }
 
 // Toggle fullscreen
@@ -127,6 +127,10 @@ function keyPressed() {
     if (key == " "){
         rotating = !rotating;
     }
+
+    if (key === 'b' || key === 'B') {
+        window.history.back(); 
+      }
   }
 
 function mouseWheel(event) {
