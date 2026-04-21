@@ -45,8 +45,10 @@ document.addEventListener('DOMContentLoaded', function () {
             navigator.clipboard.writeText(address).then(function () {
                 copied = true;
                 link.textContent = 'copied!';
+                link.classList.add('copied');
                 setTimeout(function () {
                     copied = false;
+                    link.classList.remove('copied');
                     link.textContent = link.matches(':hover, :focus') ? address : 'email';
                 }, 1500);
             });

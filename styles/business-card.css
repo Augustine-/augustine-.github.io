@@ -131,6 +131,32 @@ h1 .title-letter {
     transition: opacity 0.5s ease-in;
 }
 
+.email-link {
+    position: relative;
+    cursor: copy;
+}
+.email-link::after {
+    content: 'click to copy';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 2px;
+    font-size: 0.65em;
+    color: #999;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease-in;
+}
+.email-link:hover::after,
+.email-link:focus::after {
+    opacity: 1;
+}
+.email-link.copied::after {
+    opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .colors,
     .flip-container,
