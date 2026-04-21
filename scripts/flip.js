@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
             deg += 180;
             container.setAttribute('data-degrees-rotated', String(deg));
             container.style.transform = 'rotateY(' + deg + 'deg)';
+            container.classList.toggle('showing-back');
         });
     });
 

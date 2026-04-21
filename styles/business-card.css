@@ -55,6 +55,11 @@ body {
 .front { transform: rotateY(0deg); }
 .back  { transform: rotateY(180deg); }
 
+/* Clicks only reach the face currently facing the viewer. */
+.flip-container .back  { pointer-events: none; }
+.flip-container.showing-back .back  { pointer-events: auto; }
+.flip-container.showing-back .front { pointer-events: none; }
+
 .back h1 { margin: 0 0 0.3em; }
 .back p  { margin: 0 0 1.5em; color: #666; }
 
@@ -64,11 +69,27 @@ body {
     right: 10px;
     font-size: 14px;
     line-height: 1;
+    width: 1em;
+    height: 1em;
     color: #ccc;
     text-decoration: none;
     transition: color 0.2s;
 }
+.mandala-wink::before {
+    content: '\00B7';
+    animation: mandala-wink-cycle 3s steps(1, end) infinite;
+}
 .mandala-wink:hover { color: #66c; }
+
+@keyframes mandala-wink-cycle {
+    0%, 33%   { content: '\00B7'; }  /* · */
+    34%, 66%  { content: '\2726'; }  /* ✦ */
+    67%, 100% { content: '\25CC'; }  /* ◌ */
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mandala-wink::before { animation: none; }
+}
 
 h1 .title-letter {
     padding-left: 0;
