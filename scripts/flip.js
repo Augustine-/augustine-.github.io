@@ -28,6 +28,31 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }, prefersReducedMotion ? 0 : 500);
 
+    // Email link: hover/focus reveals the address, click copies it.
+    // Falls through to the mailto: href if the clipboard API is unavailable.
+    document.querySelectorAll('.email-link').forEach(function (link) {
+        const address = link.dataset.email;
+        let copied = false;
+        const reveal = function () { if (!copied) link.textContent = address; };
+        const hide   = function () { if (!copied) link.textContent = 'email'; };
+        link.addEventListener('mouseover', reveal);
+        link.addEventListener('focus', reveal);
+        link.addEventListener('mouseout', hide);
+        link.addEventListener('blur', hide);
+        link.addEventListener('click', function (e) {
+            if (!navigator.clipboard) return;
+            e.preventDefault();
+            navigator.clipboard.writeText(address).then(function () {
+                copied = true;
+                link.textContent = 'copied!';
+                setTimeout(function () {
+                    copied = false;
+                    link.textContent = link.matches(':hover, :focus') ? address : 'email';
+                }, 1500);
+            });
+        });
+    });
+
     // Color cycle on the card backdrop — skip entirely under reduced motion.
     if (!prefersReducedMotion) {
         const colors = ['#00b2b2', '#b200b2', '#b2b200'];
