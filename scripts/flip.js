@@ -1,80 +1,29 @@
 document.addEventListener('DOMContentLoaded', function () {
-    flipIt(".flip", ".flip-container");
-    tidyUp();
-    // A monodirectional flip, like a revolving door. 
-    function flipIt(trigger, toBeFlipped) {
-        var triggerElements = document.querySelectorAll(trigger);
-        triggerElements.forEach(function (elem) {
-            elem.addEventListener('click', function () {
-                var targetElement = document.querySelector(toBeFlipped);
-                var degreesRotated = Number(targetElement.getAttribute('data-degrees-rotated')) || 0;
-                degreesRotated += 180;
-                targetElement.setAttribute('data-degrees-rotated', String(degreesRotated));
-                targetElement.style.transform = 'rotateY(' + degreesRotated + 'deg)';
-            });
-        });
-    }
-    function tidyUp() {
-        var _a;
-        (_a = document.getElementById('return')) === null || _a === void 0 ? void 0 : _a.addEventListener('click', function () {
-            hideDescriptions();
-        });
-    }
-    var colors = ['#00b2b2', '#b200b2', '#b2b200'];
-    var i = 0;
-    setInterval(function () {
-        var businessCard = document.querySelector('.colors');
-        businessCard.style.backgroundColor = colors[i];
-        i = (i + 1) % colors.length;
-    }, 100);
-    /// Text animations
-    // Project Description
-    var currentDescriptionDiv;
-    document.querySelectorAll('.hex').forEach(function (hex) {
-        hex.addEventListener('mouseover', function () {
-            var projectId = this.id;
-            var descriptionDiv = document.getElementById("description-".concat(projectId));
-            if (currentDescriptionDiv) {
-                currentDescriptionDiv.classList.remove('visible');
-                currentDescriptionDiv.classList.add('hidden');
-            }
-            descriptionDiv.classList.remove('hidden');
-            descriptionDiv.classList.add('visible');
-            currentDescriptionDiv = descriptionDiv;
-        });
-    });
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     // Name fade-in
-    var letters = document.getElementsByClassName('title-letter');
+    const letters = document.getElementsByClassName('title-letter');
     setTimeout(function () {
-        var lastLetterIndex = letters.length - 1;
-        var _loop_1 = function (i_1) {
+        const lastLetterIndex = letters.length - 1;
+        for (let i = 0; i <= lastLetterIndex; i++) {
             setTimeout(function () {
-                letters[i_1].classList.add('active');
-                if (i_1 === lastLetterIndex) {
-                    showSubTitle();
-                    showLinks();
+                letters[i].classList.add('active');
+                if (i === lastLetterIndex) {
+                    document.getElementById('sub-title').classList.add('active');
+                    document.getElementById('links').classList.add('active');
                 }
-            }, 60 * i_1);
-        };
-        for (var i_1 = 0; i_1 <= lastLetterIndex; i_1++) {
-            _loop_1(i_1);
+            }, (prefersReducedMotion ? 0 : 60) * i);
         }
-    }, 500);
-    function showSubTitle() {
-        setTimeout(function () {
-            document.getElementById('sub-title').classList.add('active');
-        }, 1);
-    }
-    function showLinks() {
-        setTimeout(function () {
-            document.getElementById('links').classList.add('active');
-        }, 1);
-    }
-    function hideDescriptions() {
-        var visible = document.getElementsByClassName("visible");
-        for (var i = 0; i < visible.length; i++) {
-            visible[i].classList.add('hidden');
-            visible[i].classList.remove('visible');
-        }
+    }, prefersReducedMotion ? 0 : 500);
+
+    // Color cycle on the card backdrop — skip entirely under reduced motion.
+    if (!prefersReducedMotion) {
+        const colors = ['#00b2b2', '#b200b2', '#b2b200'];
+        let i = 0;
+        setInterval(function () {
+            const businessCard = document.querySelector('.colors');
+            businessCard.style.backgroundColor = colors[i];
+            i = (i + 1) % colors.length;
+        }, 600);
     }
 });

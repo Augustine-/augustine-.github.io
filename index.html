@@ -3,87 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>augustine dot io</title>
+    <title>Augustine Wittkower — Software Engineer</title>
+    <meta name="description" content="Augustine Wittkower — software engineer. Interactive business card.">
+    <meta property="og:title" content="Augustine Wittkower — Software Engineer">
+    <meta property="og:description" content="Interactive business card.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://augustine.io">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2214%22>A</text></svg>">
 
     <link rel="stylesheet" type="text/css" href="styles/business-card.css">
-    <link rel="stylesheet" type="text/css" href="styles/hex.css">
     <script src="scripts/flip.js"></script>
-</head>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-J0QNC4D9ND"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
 
-  gtag('config', 'G-J0QNC4D9ND');
-</script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-J0QNC4D9ND"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-J0QNC4D9ND');
+    </script>
+</head>
 <body>
-    <div class="project-description hidden" id="description-TempGraph">
-      <h2>TempGraph</h2>
-      One hot day, I wondered if opening my PC case and pointing a big fan at the interior would make a measurable difference on it's CPU and GPU temperatures.
-      <br><br>
-      A cursory glance around the internet revealed extant tools from the too-simple to the too-complex, nothing that brings up a time-series chart with a single click.
-      <br><br>
-      I also wanted to learn some C#. So: <a href="https://github.com/Augustine-/TempGraph">TempGraph</a>.
-    </div>
-    <div class="project-description hidden" id="description-AlwaysOnTime">
-      <h2>always on time</h2>
-      You know the old 'set your alarm clock to be 10 minutes fast' trick? 
-      <br><br>
-      It doesn't work. You look at the clock, remember what you did, and ignore it.
-      <br><br>
-      <a href="https://rankonesolutions.github.io/Always-On-Time">always on time</a> fixes this by randomizing the offset. 
-    </div>
-    <div class="project-description hidden" id="description-MandalaGenerator">
-      <h2>Mandala Generator</h2>
-      Millions of grains of silicon meticulously poured to create the device capable of drawing all these cool lines, only to be dismantled immediately after completion. 
-      <br><br>
-      Hacked together in an afternoon for a visual media event. 
-      <br><br>
-      Click for fullscreen.
-    </div>
-  </div>
-    <div class="colors"> 
-      <div class="flip-container" data-degrees-rotated=0>
-        <div class="front">
-          <h1>
-            <span id="title">
-              <span class="title-letter">A</span><span class="title-letter">u</span><span class="title-letter">g</span><span class="title-letter">u</span><span class="title-letter">s</span><span class="title-letter">t</span><span class="title-letter">i</span><span class="title-letter">n</span><span class="title-letter">e</span><span class="title-letter">&nbsp;</span><span class="title-letter">W</span><span class="title-letter">i</span><span class="title-letter">t</span><span class="title-letter">t</span><span class="title-letter">k</span><span class="title-letter">o</span><span class="title-letter">w</span><span class="title-letter">e</span><span class="title-letter">r</span>
-            </span>        
-          </h1>
-          <span id="sub-title">Software Engineer</span>
-          <div id="links">
-            <br>
-              <a href="https://www.github.com/Augustine-">github</a>
-            <br>
-              <a href="https://www.linkedin.com/in/augustineprime">linkedin</a>
-            <br>
-              <a href="javascript:;"class="flip">projects</a>
-            <br>
-              augustine.wittkower@gmail.com
-            <br>
-            <br>
-              415 937 8666
-            </div>
-        </div>
-        <div class="back">
-          <h1>Projects</h1>
-          <div class="projects">
-            <br>
-            <div class="hex" id="TempGraph">
-              <a href="#">TempGraph</a>
-            </div>
-            <div class="hex" id="MandalaGenerator">
-              <a href="/mandala.html">Mandala Generator</a>
-            </div>
-            <div class="hex" id="AlwaysOnTime">
-              <a href="#">always on time</a>
-            </div>
-            <br>
-          </div>
-          <span><i>catch you on the</i> <a href="javascript:;"class="flip" id="return">flip</a></span>
+    <div class="colors">
+      <div class="card">
+        <h1>
+          <span id="title">
+            <span class="title-letter">A</span><span class="title-letter">u</span><span class="title-letter">g</span><span class="title-letter">u</span><span class="title-letter">s</span><span class="title-letter">t</span><span class="title-letter">i</span><span class="title-letter">n</span><span class="title-letter">e</span><span class="title-letter">&nbsp;</span><span class="title-letter">W</span><span class="title-letter">i</span><span class="title-letter">t</span><span class="title-letter">t</span><span class="title-letter">k</span><span class="title-letter">o</span><span class="title-letter">w</span><span class="title-letter">e</span><span class="title-letter">r</span>
+          </span>
+        </h1>
+        <span id="sub-title">Software Engineer</span>
+        <div id="links">
           <br>
+            <a href="https://www.github.com/Augustine-">github</a>
+          <br>
+            <a href="https://www.linkedin.com/in/augustineprime">linkedin</a>
+          <br>
+            <a href="mailto:augustine.wittkower@gmail.com">augustine.wittkower@gmail.com</a>
         </div>
       </div>
     </div>

@@ -129,7 +129,7 @@ function keyPressed() {
     }
 
     if (key === 'b' || key === 'B') {
-        window.history.back(); 
+        window.location.href = '/';
       }
   }
 
