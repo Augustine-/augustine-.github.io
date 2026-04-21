@@ -1,6 +1,17 @@
 document.addEventListener('DOMContentLoaded', function () {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    // Flip: every .flip trigger rotates the container another 180°.
+    const container = document.querySelector('.flip-container');
+    document.querySelectorAll('.flip').forEach(function (elem) {
+        elem.addEventListener('click', function () {
+            let deg = Number(container.getAttribute('data-degrees-rotated')) || 0;
+            deg += 180;
+            container.setAttribute('data-degrees-rotated', String(deg));
+            container.style.transform = 'rotateY(' + deg + 'deg)';
+        });
+    });
+
     // Name fade-in
     const letters = document.getElementsByClassName('title-letter');
     setTimeout(function () {
@@ -21,8 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const colors = ['#00b2b2', '#b200b2', '#b2b200'];
         let i = 0;
         setInterval(function () {
-            const businessCard = document.querySelector('.colors');
-            businessCard.style.backgroundColor = colors[i];
+            document.querySelector('.colors').style.backgroundColor = colors[i];
             i = (i + 1) % colors.length;
         }, 600);
     }
