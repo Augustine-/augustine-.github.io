@@ -1,6 +1,19 @@
 document.addEventListener('DOMContentLoaded', function () {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    // Theme toggle: moon in light mode, sun in dark. Persists to localStorage.
+    const THEME_KEY = 'augustine-io-theme';
+    const root = document.documentElement;
+    const toggle = document.querySelector('.theme-toggle');
+    if (toggle) {
+        toggle.addEventListener('click', function () {
+            const current = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+            root.setAttribute('data-theme', next);
+        });
+    }
+
     // Flip: every .flip trigger rotates the container another 180°.
     const container = document.querySelector('.flip-container');
     document.querySelectorAll('.flip').forEach(function (elem) {
@@ -13,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Name fade-in
+    // Name fade-in, then links fade-in.
     const letters = document.getElementsByClassName('title-letter');
     setTimeout(function () {
         const lastLetterIndex = letters.length - 1;
@@ -21,7 +34,6 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(function () {
                 letters[i].classList.add('active');
                 if (i === lastLetterIndex) {
-                    document.getElementById('sub-title').classList.add('active');
                     document.getElementById('links').classList.add('active');
                 }
             }, (prefersReducedMotion ? 0 : 60) * i);
