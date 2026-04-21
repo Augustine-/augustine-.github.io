@@ -74,6 +74,6 @@ document.addEventListener('DOMContentLoaded', function () {
         setInterval(function () {
             document.querySelector('.colors').style.backgroundColor = colors[i];
             i = (i + 1) % colors.length;
-        }, 600);
+        }, 100);
     }
 });
