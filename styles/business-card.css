@@ -132,28 +132,24 @@ h1 .title-letter {
 }
 
 .email-link {
-    position: relative;
     cursor: copy;
 }
-.email-link::after {
+
+#links::after {
     content: 'click to copy';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-top: 2px;
-    font-size: 0.65em;
+    display: block;
+    margin-top: 0.6em;
+    font-size: 0.7em;
     color: #999;
-    white-space: nowrap;
-    pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s ease-in;
+    pointer-events: none;
 }
-.email-link:hover::after,
-.email-link:focus::after {
+#links:has(.email-link:hover)::after,
+#links:has(.email-link:focus)::after {
     opacity: 1;
 }
-.email-link.copied::after {
+#links:has(.email-link.copied)::after {
     opacity: 0;
 }
 
