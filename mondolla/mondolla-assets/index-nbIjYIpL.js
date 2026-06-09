@@ -4227,7 +4227,7 @@ void main() {
           <span class="eva-meter"><i></i></span>
           <span class="eva-sync-pct">00.0</span>
         </div>
-        <div class="eva-foot">432.0 Hz &middot; AUGUSTINE DOT IO</div>
+        <div class="eva-foot">432.0 Hz &middot; <a href="/" class="eva-link">AUGUSTINE DOT IO</a></div>
       </div>`,this.statusEl=e.querySelector(".eva-status"),this.rowsEl=e.querySelector(".eva-rows"),this.syncBar=e.querySelector(".eva-meter > i"),this.syncPct=e.querySelector(".eva-sync-pct"),this.toggleEl=e}setStatus(e){this.status=e,this.statusEl.dataset.status=e,this.statusEl.textContent=_m[e]}render(e,t){this.statusEl.textContent===""&&this.setStatus(this.status),this.rowsEl.innerHTML=e.pairs.map(r=>{const s=r.momentum>.02?"up":r.momentum<-.02?"dn":"fl",a=s==="up"?"▲":s==="dn"?"▼":"—",o=Math.round(r.volatility*100);return`<div class="eva-row">
           <span class="sym">${r.pair}</span>
           <span class="px">${xm(r.price)}</span>
