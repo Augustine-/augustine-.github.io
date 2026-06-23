@@ -1,0 +1,78 @@
+/*
+ * augustine.io analytics — Google Analytics 4 (gtag)
+ *
+ * Loaded on every page. Gives us:
+ *   - pageviews per page / subpath (automatic)
+ *   - outbound link clicks: github, linkedin, twitter, email
+ *     (automatic, as long as GA4 "Enhanced measurement" is on — it is by default)
+ *
+ * Plus a custom `mondolla_setting_changed` event for the mondolla controls.
+ * The settings listeners are global but no-op on pages without the lil-gui
+ * panel, so this one file is safe to include everywhere.
+ */
+(function () {
+  var GA_ID = 'G-J0QNC4D9ND';
+
+  // --- gtag bootstrap ---
+  var s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+  document.head.appendChild(s);
+
+  window.dataLayer = window.dataLayer || [];
+  function gtag() { dataLayer.push(arguments); }
+  window.gtag = gtag;
+  gtag('js', new Date());
+  gtag('config', GA_ID);
+
+  // --- mondolla: track changes to the lil-gui settings panel ---
+  // The panel is built asynchronously by mondolla's bundle and the bundle
+  // exposes nothing on window, so we listen at the document level and read
+  // the control's label + value straight from the lil-gui DOM. Slider drags
+  // don't fire a native `change`, so those are caught on pointer release.
+  var lastFire = {};
+  function emit(control, value) {
+    if (typeof control !== 'string') return;
+    var now = +new Date();
+    if (lastFire[control] && now - lastFire[control] < 400) return; // de-dupe drag+change
+    lastFire[control] = now;
+    gtag('event', 'mondolla_setting_changed', {
+      control: control,
+      value: String(value)
+    });
+  }
+  function controllerOf(node) {
+    return node && node.closest ? node.closest('.lil-controller') : null;
+  }
+  function labelOf(controller) {
+    var n = controller.querySelector('.lil-name');
+    return n ? n.textContent.trim() : 'unknown';
+  }
+  function valueOf(controller, target) {
+    if (target && target.type === 'checkbox') return target.checked;
+    var input = controller.querySelector('input, select');
+    if (!input) return null;
+    return input.type === 'checkbox' ? input.checked : input.value;
+  }
+
+  // dropdowns, checkboxes, and typed-number commits fire a native change
+  document.addEventListener('change', function (e) {
+    var c = controllerOf(e.target);
+    if (c) emit(labelOf(c), valueOf(c, e.target));
+  }, true);
+
+  // sliders are mouse-driven — record the value when the drag ends, if it moved
+  var dragCtl = null, dragStart = null;
+  document.addEventListener('pointerdown', function (e) {
+    var slider = e.target && e.target.closest ? e.target.closest('.lil-slider') : null;
+    if (!slider) return;
+    dragCtl = controllerOf(slider);
+    dragStart = dragCtl ? valueOf(dragCtl, null) : null;
+  }, true);
+  document.addEventListener('pointerup', function () {
+    if (!dragCtl) return;
+    var now = valueOf(dragCtl, null);
+    if (now !== dragStart) emit(labelOf(dragCtl), now);
+    dragCtl = null; dragStart = null;
+  }, true);
+})();
