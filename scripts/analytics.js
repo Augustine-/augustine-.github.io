@@ -1,17 +1,18 @@
 /*
- * augustine.io analytics — Google Analytics 4 (gtag)
+ * augustine.io analytics — Google Analytics 4 (gtag) + PostHog
  *
  * Loaded on every page. Gives us:
- *   - pageviews per page / subpath (automatic)
+ *   - pageviews per page / subpath (automatic in both)
  *   - outbound link clicks: github, linkedin, twitter, email
- *     (automatic, as long as GA4 "Enhanced measurement" is on — it is by default)
+ *     (GA4 via "Enhanced measurement", PostHog via autocapture)
  *
- * Plus a custom `mondolla_setting_changed` event for the mondolla controls.
- * The settings listeners are global but no-op on pages without the lil-gui
- * panel, so this one file is safe to include everywhere.
+ * Plus a custom `mondolla_setting_changed` event for the mondolla controls,
+ * sent to both. The settings listeners are global but no-op on pages without
+ * the lil-gui panel, so this one file is safe to include everywhere.
  */
 (function () {
   var GA_ID = 'G-J0QNC4D9ND';
+  var POSTHOG_TOKEN = 'phc_spL6csrfSs5LvVwuNCVd6ambLG3gVgJFxcvpLqcQkErM';
 
   // --- gtag bootstrap ---
   var s = document.createElement('script');
@@ -24,6 +25,22 @@
   window.gtag = gtag;
   gtag('js', new Date());
   gtag('config', GA_ID);
+
+  // --- PostHog bootstrap ---
+  // Loads the full library directly instead of the official inline stub;
+  // events fired before load are dropped, which only affects the first
+  // ~100ms of a visit. Pageviews/autocapture start on init regardless.
+  var ph = document.createElement('script');
+  ph.async = true;
+  ph.crossOrigin = 'anonymous';
+  ph.src = 'https://us-assets.i.posthog.com/static/array.js';
+  ph.onload = function () {
+    window.posthog.init(POSTHOG_TOKEN, {
+      api_host: 'https://us.i.posthog.com',
+      defaults: '2025-05-24'
+    });
+  };
+  document.head.appendChild(ph);
 
   // --- mondolla: track changes to the lil-gui settings panel ---
   // The panel is built asynchronously by mondolla's bundle and the bundle
@@ -40,6 +57,12 @@
       control: control,
       value: String(value)
     });
+    if (window.posthog && window.posthog.capture) {
+      window.posthog.capture('mondolla_setting_changed', {
+        control: control,
+        value: String(value)
+      });
+    }
   }
   function controllerOf(node) {
     return node && node.closest ? node.closest('.lil-controller') : null;
