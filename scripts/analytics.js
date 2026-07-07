@@ -1,30 +1,16 @@
 /*
- * augustine.io analytics — Google Analytics 4 (gtag) + PostHog
+ * augustine.io analytics — PostHog
  *
  * Loaded on every page. Gives us:
- *   - pageviews per page / subpath (automatic in both)
- *   - outbound link clicks: github, linkedin, twitter, email
- *     (GA4 via "Enhanced measurement", PostHog via autocapture)
+ *   - pageviews per page / subpath (automatic)
+ *   - outbound link clicks: github, linkedin, twitter, email (autocapture)
  *
- * Plus a custom `mondolla_setting_changed` event for the mondolla controls,
- * sent to both. The settings listeners are global but no-op on pages without
- * the lil-gui panel, so this one file is safe to include everywhere.
+ * Plus a custom `mondolla_setting_changed` event for the mondolla controls.
+ * The settings listeners are global but no-op on pages without the lil-gui
+ * panel, so this one file is safe to include everywhere.
  */
 (function () {
-  var GA_ID = 'G-J0QNC4D9ND';
   var POSTHOG_TOKEN = 'phc_spL6csrfSs5LvVwuNCVd6ambLG3gVgJFxcvpLqcQkErM';
-
-  // --- gtag bootstrap ---
-  var s = document.createElement('script');
-  s.async = true;
-  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
-  document.head.appendChild(s);
-
-  window.dataLayer = window.dataLayer || [];
-  function gtag() { dataLayer.push(arguments); }
-  window.gtag = gtag;
-  gtag('js', new Date());
-  gtag('config', GA_ID);
 
   // --- PostHog bootstrap ---
   // Loads the full library directly instead of the official inline stub;
@@ -53,10 +39,6 @@
     var now = +new Date();
     if (lastFire[control] && now - lastFire[control] < 400) return; // de-dupe drag+change
     lastFire[control] = now;
-    gtag('event', 'mondolla_setting_changed', {
-      control: control,
-      value: String(value)
-    });
     if (window.posthog && window.posthog.capture) {
       window.posthog.capture('mondolla_setting_changed', {
         control: control,
