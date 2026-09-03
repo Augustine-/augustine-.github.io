@@ -1,0 +1,341 @@
+/*
+ * augustine.io/v2 — the card is real.
+ *
+ * A dark room, one card, and the cursor is the light. The card faces are
+ * WebGL canvases lit in real time; the DOM text on top is transparent but
+ * still real (links, focus, screen readers). Without WebGL the same DOM
+ * renders as a plain paper card.
+ */
+
+@font-face {
+    font-family: 'MicroFLF';
+    src: url('/assets/fonts/MicroFLF.ttf') format('truetype');
+    font-display: swap;
+}
+
+:root {
+    /* dark room (default) */
+    --bg: #141210;
+    --fg: #e6e1d8;
+    --muted: #8a847a;
+    --hint: #5f5950;
+    --paper: #ece7dc;
+    --edge: #c9c2b4;
+    --ink: #1f1c18;
+    --ink-muted: #7a746a;
+    --focus: #ffd27a;
+    --toggle-glyph: '\2600'; /* ☀ — click for light */
+
+    --card-w: min(88vw, 600px);
+    --card-ratio: 1.75;                          /* a real card: 3.5in x 2in */
+    --card-h: calc(var(--card-w) / var(--card-ratio));
+    --r: calc(var(--card-w) * 0.035);            /* corner radius */
+    --thick: 2px;                                /* card stock */
+    --fs: 1cqw;                                  /* type scale, relative to the face */
+}
+
+:root[data-theme="light"] {
+    --bg: #d8d5ce;
+    --fg: #1b1a17;
+    --muted: #6a665e;
+    --hint: #8f8a80;
+    --paper: #fbfaf7;
+    --edge: #d8d4cb;
+    --ink: #1b1a17;
+    --ink-muted: #6f6a62;
+    --focus: #2b6cff;
+    --toggle-glyph: '\263E'; /* ☾ — click for dark */
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+    margin: 0;
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'MicroFLF', ui-monospace, monospace;
+    transition: background-color 0.3s ease;
+    overflow-x: hidden;
+}
+
+/* The table: a full-viewport lamp-and-shadow pass behind everything. */
+canvas.table {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    z-index: 0;
+}
+html.gl canvas.table { display: block; }
+html:not(.gl) body {
+    background:
+        radial-gradient(ellipse 70% 60% at 50% 45%, color-mix(in srgb, var(--fg) 7%, var(--bg)), var(--bg) 70%);
+}
+
+.theme-toggle {
+    position: fixed;
+    top: 14px;
+    right: 16px;
+    z-index: 3;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 20px;
+    line-height: 1;
+    padding: 6px 10px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s ease, color 0.2s ease;
+}
+.theme-toggle:hover,
+.theme-toggle:focus-visible { opacity: 1; color: var(--fg); outline: none; }
+.theme-toggle::before { content: var(--toggle-glyph); }
+
+.room {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3rem 0;
+}
+
+.scene {
+    width: var(--card-w);
+    height: var(--card-h);
+    perspective: 1400px;
+    perspective-origin: 50% 50%;
+}
+
+.card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    will-change: transform;
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
+    opacity: 0;
+    transition: opacity 0.7s ease;
+}
+.card.in { opacity: 1; }
+.card.dragging { cursor: grabbing; }
+.card.dragging .content { pointer-events: none; }
+
+.face {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r);
+    overflow: hidden;
+    background: var(--paper);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    container-type: size;
+}
+.front { transform: translateZ(calc(var(--thick) / 2)); }
+.back  { transform: rotateY(180deg) translateZ(calc(var(--thick) / 2)); }
+html:not(.gl) .face {
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.5) inset,
+        0 18px 40px -18px rgba(0, 0, 0, 0.55),
+        0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Card stock: four thin edge faces so the card has thickness mid-flip. Inset past the
+   rounded corners, and only shown once the card is turned enough for them to matter. */
+.edge {
+    position: absolute;
+    background: var(--edge);
+    backface-visibility: visible;
+    visibility: hidden;
+}
+.card.edge-on .edge { visibility: visible; }
+.edge-l, .edge-r { top: var(--r); width: var(--thick); height: calc(100% - 2 * var(--r)); transform-origin: 0 50%; transform: translateZ(calc(var(--thick) / -2)) rotateY(-90deg); }
+.edge-l { left: 0; }
+.edge-r { left: 100%; }
+.edge-t, .edge-b { left: var(--r); width: calc(100% - 2 * var(--r)); height: var(--thick); transform-origin: 50% 0; transform: translateZ(calc(var(--thick) / -2)) rotateX(90deg); }
+.edge-t { top: 0; }
+.edge-b { top: 100%; }
+
+canvas.paper {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+html:not(.gl) canvas.paper { display: none; }
+
+.content {
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: calc(var(--fs) * 4);
+    color: var(--ink);
+}
+/* With WebGL the shader draws the type; the DOM copy stays for hit-testing and a11y. */
+html.gl .content { color: transparent; }
+html.gl .content a,
+html.gl .content button { color: transparent; }
+
+[data-t] { white-space: nowrap; }
+
+.content a { color: inherit; text-decoration: none; }
+html:not(.gl) .content a { text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+.content button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+}
+.content :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 6px;
+    border-radius: 6px;
+}
+
+/* Foil without WebGL: a static rainbow. With WebGL the shader does the real thing. */
+.foil {
+    background: linear-gradient(100deg, #f5a3a3, #f7dc8f, #a9e9c3, #9fd0ff, #d7b3ff, #f5a3a3);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+html.gl .foil { background: none; }
+html:not(.gl) .foil-rule {
+    border-bottom: 2px solid transparent;
+    border-image: linear-gradient(90deg, #f5a3a3, #f7dc8f, #a9e9c3, #9fd0ff, #d7b3ff) 1;
+}
+
+/* ---- front ---- */
+.name {
+    margin: 0;
+    font-size: calc(var(--fs) * 6.2);
+    font-weight: normal;
+    line-height: 1.1;
+}
+.tagline {
+    margin: calc(var(--fs) * 0.6) 0 calc(var(--fs) * 3.4);
+    font-size: calc(var(--fs) * 2.7);
+    font-style: italic;
+}
+.links {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: calc(var(--fs) * 1.1);
+}
+.links a {
+    font-size: calc(var(--fs) * 2.9);
+    padding: 0 0.4em;
+}
+.cta {
+    margin-top: calc(var(--fs) * 3.4);
+    font-size: calc(var(--fs) * 3.3);
+    padding: 0 0.4em;
+}
+
+/* ---- back ---- */
+.heading {
+    margin: 0 0 calc(var(--fs) * 2.8);
+    font-size: calc(var(--fs) * 4.6);
+    font-weight: normal;
+}
+.projects {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--fs) * 1.5);
+}
+.projects li {
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0.45em;
+    font-size: calc(var(--fs) * 2.8);
+}
+.projects a { padding: 0 0.15em; }
+.blurb { color: var(--ink-muted); }
+.dash  { color: var(--ink-muted); }
+.flip-back {
+    margin: calc(var(--fs) * 3.6) 0 0;
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0.45em;
+    font-size: calc(var(--fs) * 2.5);
+}
+.flip-back i { font-style: italic; }
+.flip-back button { padding: 0 0.3em; }
+
+.mandala-wink {
+    position: absolute;
+    z-index: 2;
+    bottom: calc(var(--fs) * 1.2);
+    right: calc(var(--fs) * 1.8);
+    font-size: 14px;
+    line-height: 1;
+    width: 1em;
+    height: 1em;
+    color: var(--ink-muted);
+    opacity: 0.55;
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+.mandala-wink::before {
+    content: '\00B7';
+    animation: mandala-wink-cycle 3s steps(1, end) infinite;
+}
+.mandala-wink:hover { opacity: 1; }
+@keyframes mandala-wink-cycle {
+    0%, 33%   { content: '\00B7'; }
+    34%, 66%  { content: '\2726'; }
+    67%, 100% { content: '\25CC'; }
+}
+
+.hint {
+    margin: 1.6rem 0 0;
+    min-height: 1.2em;
+    font-size: 0.8rem;
+    color: var(--hint);
+    letter-spacing: 0.02em;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 1.2s ease 0.8s;
+}
+.hint.in { opacity: 1; }
+
+/* A portrait card on portrait phones: same card, held the other way. */
+@media (max-width: 640px) and (orientation: portrait) {
+    :root {
+        --card-w: min(84vw, 380px);
+        --card-ratio: 0.5714;
+        --fs: 1.6cqw;
+    }
+    .name { font-size: calc(var(--fs) * 4.7); }
+    .projects li { flex-direction: column; align-items: center; gap: 0.15em; }
+    .dash { display: none; }
+    .blurb { font-size: 0.85em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .card { transition: none; }
+    .hint { transition: none; }
+    .mandala-wink::before { animation: none; }
+}
