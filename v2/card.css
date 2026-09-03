@@ -14,16 +14,16 @@
 }
 
 :root {
-    /* dark room (default) */
-    --bg: #141210;
-    --fg: #e6e1d8;
-    --muted: #8a847a;
-    --hint: #5f5950;
-    --paper: #ece7dc;
-    --edge: #c9c2b4;
-    --ink: #1f1c18;
-    --ink-muted: #7a746a;
-    --focus: #ffd27a;
+    /* dark room (default): black cloth */
+    --bg: #0a0a0b;
+    --fg: #e6e3dc;
+    --muted: #8a877f;
+    --hint: #55534e;
+    --paper: #ebe7dd;
+    --edge: #cfcabf;
+    --ink: #1c1a18;
+    --ink-muted: #75716a;
+    --focus: #e8d9a8;
     --toggle-glyph: '\2600'; /* ☀ — click for light */
 
     --card-w: min(88vw, 600px);
@@ -35,11 +35,11 @@
 }
 
 :root[data-theme="light"] {
-    --bg: #d8d5ce;
+    --bg: #e6e4df;
     --fg: #1b1a17;
     --muted: #6a665e;
-    --hint: #8f8a80;
-    --paper: #fbfaf7;
+    --hint: #9a968d;
+    --paper: #f9f8f4;
     --edge: #d8d4cb;
     --ink: #1b1a17;
     --ink-muted: #6f6a62;
@@ -142,6 +142,11 @@ html:not(.gl) body {
 }
 .front { transform: translateZ(calc(var(--thick) / 2)); }
 .back  { transform: rotateY(180deg) translateZ(calc(var(--thick) / 2)); }
+html.gl .face {
+    background: transparent;
+    border-radius: 0;
+    overflow: visible;
+}
 html:not(.gl) .face {
     box-shadow:
         0 1px 0 rgba(255, 255, 255, 0.5) inset,
@@ -208,18 +213,9 @@ html:not(.gl) .content a { text-decoration: underline; text-underline-offset: 0.
     border-radius: 6px;
 }
 
-/* Foil without WebGL: a static rainbow. With WebGL the shader does the real thing. */
-.foil {
-    background: linear-gradient(100deg, #f5a3a3, #f7dc8f, #a9e9c3, #9fd0ff, #d7b3ff, #f5a3a3);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
-html.gl .foil { background: none; }
-html:not(.gl) .foil-rule {
-    border-bottom: 2px solid transparent;
-    border-image: linear-gradient(90deg, #f5a3a3, #f7dc8f, #a9e9c3, #9fd0ff, #d7b3ff) 1;
-}
+/* Without WebGL the raised gloss ink is plain ink with a hint of relief. */
+html:not(.gl) .gloss { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6), 0 -1px 0 rgba(0, 0, 0, 0.25); }
+html:not(.gl) .gloss-rule { border-bottom: 2px solid var(--ink); }
 
 /* ---- front ---- */
 .name {

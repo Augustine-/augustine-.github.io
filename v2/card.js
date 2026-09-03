@@ -2,9 +2,9 @@
  * augustine.io/v2 — the card is real.
  *
  * No dependencies. Three tiny WebGL2 passes:
- *   - one per card face: paper grain, letterpress-debossed type, holographic
- *     foil, all lit by a point light that sits wherever the cursor is;
- *   - one for the table: the lamp's pool of light and the card's shadow.
+ *   - one per card face: bone paper with a watermark, letterpress type, a
+ *     raised lacquered-black name, all lit by a point light at the cursor;
+ *   - one for the tablecloth: the lamp's pool of light and the card's shadow.
  *
  * The type is drawn to a 2D canvas from the DOM's own layout, so the
  * transparent DOM text on top lines up with what the shader renders. That
@@ -34,16 +34,16 @@
   // Room presets. Colours are linear-ish display values; tuned by eye.
   var THEMES = {
     dark: {
-      bg: '#141210',
-      table: [0.30, 0.27, 0.23], tableAmb: 0.08, tablePow: 1.2, shadow: 0.28,
-      lightCol: [1.0, 0.95, 0.86],
-      paper: [0.925, 0.900, 0.845], ink: [0.12, 0.11, 0.09], cardAmb: 0.24, cardPow: 1.25
+      bg: '#0a0a0b',
+      table: [0.105, 0.105, 0.11], tableAmb: 0.10, tablePow: 1.0, shadow: 0.35, weave: 0.16, fuzz: 0.10, vignette: 0.55,
+      lightCol: [1.0, 0.98, 0.94],
+      paper: [0.92, 0.905, 0.865], ink: [0.13, 0.12, 0.11], cardAmb: 0.24, cardPow: 1.25
     },
     light: {
-      bg: '#d8d5ce',
-      table: [0.846, 0.835, 0.808], tableAmb: 0.86, tablePow: 0.32, shadow: 0.58,
-      lightCol: [1.0, 0.97, 0.90],
-      paper: [0.985, 0.980, 0.968], ink: [0.11, 0.10, 0.09], cardAmb: 0.82, cardPow: 0.42
+      bg: '#e6e4df',
+      table: [0.93, 0.925, 0.91], tableAmb: 0.86, tablePow: 0.26, shadow: 0.62, weave: 0.045, fuzz: 0.035, vignette: 0.22,
+      lightCol: [1.0, 0.99, 0.96],
+      paper: [0.975, 0.97, 0.955], ink: [0.12, 0.11, 0.10], cardAmb: 0.82, cardPow: 0.42
     }
   };
 
@@ -76,34 +76,41 @@
     '  return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }'
   ].join('\n');
 
-  // Card face. Texture channels: R ink coverage, G foil coverage, B blurred height.
+  // Card face. Texture channels: R ink coverage, G gloss (raised, lacquered ink),
+  // B height (0.5 is flat; raised type above, pressed type below), A watermark.
+  // The canvas is transparent: the shader draws the card's own antialiased silhouette.
   var FACE_FS = [
     '#version 300 es',
     'precision highp float;',
     'in vec2 vUv; out vec4 fragColor;',
-    'uniform sampler2D uTex; uniform vec2 uTexel; uniform float uAspect;',
+    'uniform sampler2D uTex; uniform vec2 uTexel; uniform float uAspect; uniform vec2 uSize; uniform float uRadius;',
     'uniform vec3 uLight; uniform vec3 uView;',
-    'uniform float uTime; uniform float uAmbient; uniform float uPower; uniform float uSpin;',
+    'uniform float uTime; uniform float uAmbient; uniform float uPower;',
     'uniform vec3 uPaper; uniform vec3 uInk; uniform vec3 uLightCol;',
     'uniform vec4 uHot; uniform float uHotAmt;',
     NOISE,
-    'vec3 spectrum(float t){ return 0.5 + 0.5 * cos(6.28318 * (t + vec3(0.0, 0.33, 0.67))); }',
+    'float sdRR(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r; }',
     'void main(){',
+    // silhouette: a rounded rectangle inset one pixel, with a soft one-pixel edge
+    '  vec2 ppx = (vUv - 0.5) * uSize;',
+    '  float sd = sdRR(ppx, uSize * 0.5 - 1.0, uRadius);',
+    '  float alpha = 1.0 - smoothstep(-0.75, 0.75, sd);',
+    '  if (alpha <= 0.001) { fragColor = vec4(0.0); return; }',
     '  vec4 s = texture(uTex, vUv);',
-    '  float ink = s.r, foil = s.g;',
+    '  float ink = s.r, gloss = s.g, wm = s.a;',
     '  vec2 pix = vUv / uTexel;',
     '  float inHot = step(uHot.x, vUv.x) * step(vUv.x, uHot.x + uHot.z) * step(uHot.y, vUv.y) * step(vUv.y, uHot.y + uHot.w) * uHotAmt;',
     '  ink = min(1.0, ink * (1.0 + 0.7 * inHot));',
-    // letterpress: the type is pressed into the paper, so the normal tilts at glyph edges
+    // relief: raised type bumps up, pressed type sinks; the normal comes from the height gradient
     '  float hl = texture(uTex, vUv - vec2(uTexel.x, 0.0)).b, hr = texture(uTex, vUv + vec2(uTexel.x, 0.0)).b;',
     '  float hu = texture(uTex, vUv - vec2(0.0, uTexel.y)).b, hd = texture(uTex, vUv + vec2(0.0, uTexel.y)).b;',
-    '  vec2 dcov = vec2(hr - hl, hd - hu);',
-    // paper: fine grain plus a faint fibre direction
-    '  float g1 = vnoise(pix * 0.55) - 0.5;',
-    '  float g2 = vnoise(pix * 0.13 + 7.0) - 0.5;',
-    '  float fib = vnoise(vec2(pix.x * 0.08, pix.y * 1.3) + 3.0) - 0.5;',
-    '  vec2 gN = (vec2(g1, fib) * 0.05 + vec2(g2) * 0.02) * (1.0 - foil * 0.85);',
-    '  vec3 N = normalize(vec3(dcov * 3.2 + gN, 1.0));',
+    '  vec2 dh = vec2(hr - hl, hd - hu);',
+    // paper: fine grain plus a faint fibre direction; the lacquer is smooth
+    '  float g1 = vnoise(pix * 0.6) - 0.5;',
+    '  float g2 = vnoise(pix * 0.12 + 7.0) - 0.5;',
+    '  float fib = vnoise(vec2(pix.x * 0.07, pix.y * 1.4) + 3.0) - 0.5;',
+    '  vec2 gN = (vec2(g1, fib) * 0.04 + vec2(g2) * 0.015) * (1.0 - gloss);',
+    '  vec3 N = normalize(vec3(-dh * mix(6.0, 3.8, gloss) + gN, 1.0));',
     '  vec3 P = vec3(vUv.x - 0.5, (vUv.y - 0.5) * uAspect, 0.0);',
     '  vec3 Lv = uLight - P; float dist = length(Lv); vec3 L = Lv / dist;',
     '  vec3 V = normalize(uView - P);',
@@ -111,41 +118,38 @@
     '  float att = uPower / (0.35 + dist * dist * 2.2);',
     '  float ndl = max(dot(N, L), 0.0);',
     '  float ndh = max(dot(N, H), 0.0);',
-    '  vec3 paper = uPaper * (1.0 + g1 * 0.045 + g2 * 0.025);',
-    '  vec3 base = mix(paper, uInk, ink);',
-    '  float cavity = 1.0 - s.b * 0.22 * (1.0 - foil);',
+    '  float ndv = max(dot(N, V), 0.0);',
+    // albedo: bone paper with a watermark, matte ink, lacquered black
+    '  vec3 paper = uPaper * (1.0 + g1 * 0.035 + g2 * 0.02) * (1.0 - wm * 0.032);',
+    '  vec3 inkCol = mix(uInk, vec3(0.018, 0.017, 0.016), gloss);',
+    '  vec3 base = mix(paper, inkCol, ink);',
+    '  float pressed = max(0.5 - s.b, 0.0) * 2.0;',
+    '  float cavity = 1.0 - pressed * 0.22;',
     '  vec3 col = base * cavity * (uAmbient + ndl * att * uLightCol);',
-    '  col += uLightCol * pow(ndh, 28.0) * att * mix(0.10, 0.03, ink);',
-    // holographic foil: a diffraction grating, so the hue depends on the half-vector
-    '  if (foil > 0.002) {',
-    '    vec2 gdir = vec2(cos(uSpin), sin(uSpin));',
-    '    float phase = dot(H.xy, gdir) * 2.6 + dot(vUv, vec2(1.7, 0.9)) * 2.4 + uTime * 0.03;',
-    '    float phase2 = dot(H.xy, vec2(-gdir.y, gdir.x)) * 5.0 + vnoise(pix * 0.02) * 3.0;',
-    '    vec3 rb = mix(spectrum(phase), spectrum(phase2), 0.35);',
-    '    rb = mix(vec3(0.5), rb, 0.95);',
-    '    float flash = pow(ndh, 3.0);',
-    '    vec3 silver = vec3(0.55, 0.55, 0.60) * (uAmbient * 1.4 + ndl * att * 0.5);',
-    '    vec3 fc = mix(silver, rb * (0.35 + 1.0 * att * ndl), 0.45 + 0.5 * flash);',
-    '    fc += uLightCol * pow(ndh, 220.0) * att * 1.5;',
-    '    fc *= 1.0 + 0.4 * inHot;',
-    '    col = mix(col, fc, foil);',
-    '  }',
-    // a touch of darkening at the very edge of the stock
-    '  vec2 e = min(vUv, 1.0 - vUv); float ed = smoothstep(0.0, 0.012, min(e.x, e.y / uAspect));',
-    '  col *= 0.85 + 0.15 * ed;',
+    // specular: satin on the paper, a hard lacquer on the gloss ink, Schlick fresnel on both
+    '  float fres = pow(1.0 - ndv, 5.0);',
+    '  float F0 = mix(0.03, 0.06, gloss);',
+    '  float F = F0 + (1.0 - F0) * fres;',
+    '  float specPow = mix(26.0, 90.0, gloss);',
+    '  float spec = pow(ndh, specPow) * (specPow + 2.0) / 8.0;',
+    '  spec *= mix(0.35, 1.0, gloss) * (1.0 + wm * 0.35) * (1.0 + 0.6 * inHot * gloss);',
+    '  col += uLightCol * spec * F * att;',
+    // the lacquer reflects the room: black turns grey at grazing angles
+    '  col += vec3(gloss * F * uAmbient * 1.3);',
     '  col = min(col, 0.86) + (1.0 - exp(-max(col - 0.86, 0.0) * 2.5)) * 0.14;',
-    '  fragColor = vec4(col, 1.0);',
+    '  fragColor = vec4(col * alpha, alpha);',
     '}'
   ].join('\n');
 
-  // Table: the lamp's pool of light and the card's soft shadow. Pixels are device px.
+  // Table: a cloth under the lamp, and the card's soft shadow. Pixels are device px.
   var TABLE_FS = [
     '#version 300 es',
     'precision highp float;',
     'out vec4 fragColor;',
-    'uniform vec2 uRes; uniform vec2 uLight; uniform float uLightH;',
+    'uniform vec2 uRes; uniform float uDpr; uniform vec2 uLight; uniform float uLightH;',
     'uniform vec2 uCardC; uniform vec2 uCardHalf; uniform float uCardH; uniform float uFlipCos; uniform float uRadius;',
     'uniform vec3 uTable; uniform float uAmbient; uniform float uPower; uniform vec3 uLightCol; uniform float uShadow; uniform float uTime;',
+    'uniform float uWeave; uniform float uFuzz; uniform float uVignette;',
     NOISE,
     'float sdRR(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r; }',
     'void main(){',
@@ -159,9 +163,14 @@
     '  float sd = sdRR(p - shc, shh, uRadius * (1.0 + k));',
     '  float pen = 8.0 + uCardH * 1.5;',
     '  float sha = mix(uShadow, 1.0, smoothstep(-pen * 0.3, pen, sd));',
-    '  vec3 col = uTable * (uAmbient + lamp * uLightCol * sha);',
-    '  vec2 q = p / uRes - 0.5; col *= 1.0 - dot(q, q) * 0.5;',
-    '  col += (hash(p + fract(uTime)) - 0.5) * 0.012;',
+    // the weave: threads a few pixels apart, plus fuzz
+    '  float f = 6.28318 / (3.2 * uDpr);',
+    '  float weave = sin(p.x * f) * sin(p.y * f);',
+    '  float fuzz = vnoise(p * 0.45 / uDpr) * 0.6 + vnoise(p * 0.09 / uDpr) * 0.4 - 0.5;',
+    '  float tex = 1.0 + uWeave * weave + uFuzz * fuzz;',
+    '  vec3 col = uTable * tex * (uAmbient + lamp * uLightCol * sha);',
+    '  vec2 q = p / uRes - 0.5; col *= 1.0 - dot(q, q) * uVignette;',
+    '  col += (hash(p + fract(uTime)) - 0.5) * 0.01;',
     '  fragColor = vec4(col, 1.0);',
     '}'
   ].join('\n');
@@ -170,8 +179,8 @@
   /* WebGL plumbing                                                      */
   /* ------------------------------------------------------------------ */
 
-  function Pass(canvas, fsSrc) {
-    var gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false });
+  function Pass(canvas, fsSrc, alpha) {
+    var gl = canvas.getContext('webgl2', { alpha: !!alpha, antialias: false, depth: false, stencil: false, premultipliedAlpha: true });
     if (!gl) throw new Error('no webgl2');
     function sh(type, src) {
       var s = gl.createShader(type);
@@ -250,20 +259,30 @@
       }
     }
   }
-  // Blurred coverage -> B channel. Three box passes approximate a gaussian.
+  // Relief -> B channel, centred on 0.5: gloss type (R and G) is raised, plain ink (R only)
+  // is pressed. Three box passes approximate a gaussian. The watermark was drawn into B
+  // beforehand, so it is moved to A first.
   function heightMap(data, w, h, r) {
-    var n = w * h, a = new Float32Array(n), b = new Float32Array(n), i;
-    for (i = 0; i < n; i++) a[i] = Math.max(data[i * 4], data[i * 4 + 1] * 0.7) / 255;
-    for (i = 0; i < 3; i++) { boxBlurH(a, b, w, h, r); boxBlurV(b, a, w, h, r); }
-    for (i = 0; i < n; i++) data[i * 4 + 2] = Math.min(255, (a[i] * 255 + 0.5) | 0);
+    var n = w * h, up = new Float32Array(n), down = new Float32Array(n), tmp = new Float32Array(n), i, v;
+    for (i = 0; i < n; i++) {
+      data[i * 4 + 3] = data[i * 4 + 2];
+      var g = data[i * 4 + 1];
+      up[i] = g / 255;
+      down[i] = Math.max(data[i * 4] - g, 0) / 255;
+    }
+    for (i = 0; i < 3; i++) { boxBlurH(up, tmp, w, h, r); boxBlurV(tmp, up, w, h, r); }
+    for (i = 0; i < 3; i++) { boxBlurH(down, tmp, w, h, r); boxBlurV(tmp, down, w, h, r); }
+    for (i = 0; i < n; i++) {
+      v = 0.5 + 0.5 * (up[i] - down[i]);
+      data[i * 4 + 2] = Math.max(0, Math.min(255, (v * 255 + 0.5) | 0));
+    }
   }
 
-  function Face(name, el, spin) {
+  function Face(name, el) {
     this.name = name;
     this.el = el;
-    this.spin = spin;
     this.canvas = el.querySelector('canvas.paper');
-    this.pass = new Pass(this.canvas, FACE_FS);
+    this.pass = new Pass(this.canvas, FACE_FS, true);
     var gl = this.pass.gl;
     this.tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.tex);
@@ -291,6 +310,14 @@
     ctx.scale(DPR, DPR);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    // the watermark, into B for now (heightMap moves it to A)
+    var wmText = face.getAttribute('data-watermark');
+    if (wmText) {
+      var cw = w / DPR, ch = h / DPR;
+      ctx.font = 'normal normal ' + Math.round(Math.min(cw, ch) * 0.62) + 'px ' + getComputedStyle(face).fontFamily;
+      ctx.fillStyle = 'rgb(0,0,255)';
+      ctx.fillText(wmText, cw / 2, ch * 0.52);
+    }
     var items = face.querySelectorAll('[data-t]');
     for (var i = 0; i < items.length; i++) {
       var el = items[i];
@@ -298,19 +325,19 @@
       var r = rectIn(el, face);
       var cs = getComputedStyle(el);
       ctx.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
-      var foil = el.classList.contains('foil');
-      var foilRule = el.classList.contains('foil-rule');
-      var ink = foil ? 1 : parseFloat(el.getAttribute('data-ink') || '1');
+      var gloss = el.classList.contains('gloss');
+      var glossRule = el.classList.contains('gloss-rule');
+      var ink = gloss ? 1 : parseFloat(el.getAttribute('data-ink') || '1');
       var text = el.textContent.trim();
       var cx = r.x + r.w / 2, cy = r.y + r.h / 2;
       var fs = parseFloat(cs.fontSize);
-      ctx.fillStyle = foil ? 'rgb(0,255,0)' : 'rgb(' + Math.round(ink * 255) + ',0,0)';
+      ctx.fillStyle = gloss ? 'rgb(255,255,0)' : 'rgb(' + Math.round(ink * 255) + ',0,0)';
       ctx.fillText(text, cx, cy);
-      if (el.tagName === 'A' || foilRule) {
+      if (el.tagName === 'A' || glossRule) {
         var tw = ctx.measureText(text).width;
         var th = Math.max(1.5, fs * 0.075);
         var ty = Math.round((cy + fs * 0.55) * DPR) / DPR;
-        ctx.fillStyle = foilRule ? 'rgb(0,255,0)' : 'rgb(' + Math.round(ink * 0.6 * 255) + ',0,0)';
+        ctx.fillStyle = glossRule ? 'rgb(255,255,0)' : 'rgb(' + Math.round(ink * 0.6 * 255) + ',0,0)';
         ctx.fillRect(cx - tw / 2, ty, tw, th);
       }
     }
@@ -329,12 +356,13 @@
     gl.uniform1i(p.u('uTex'), 0);
     p.set('uTexel', [1 / this.w, 1 / this.h]);
     p.set('uAspect', this.h / this.w);
+    p.set('uSize', [S.W, S.H]);
+    p.set('uRadius', S.W * 0.035);
     p.set('uLight', light);
     p.set('uView', view);
     p.set('uTime', time);
     p.set('uAmbient', T.cardAmb);
     p.set('uPower', T.cardPow);
-    p.set('uSpin', this.spin);
     p.set('uPaper', T.paper);
     p.set('uInk', T.ink);
     p.set('uLightCol', T.lightCol);
@@ -360,6 +388,7 @@
     var lifted = clamp((cardH - S.cardH) / (S.W * 0.08), 0, 1);
     gl.useProgram(p.prog);
     p.set('uRes', [this.w, this.h]);
+    p.set('uDpr', DPR);
     p.set('uLight', [S.light.x * DPR, S.light.y * DPR]);
     p.set('uLightH', S.lightH * DPR);
     p.set('uCardC', [S.cx * DPR, S.cy * DPR]);
@@ -372,6 +401,9 @@
     p.set('uPower', T.tablePow);
     p.set('uLightCol', T.lightCol);
     p.set('uShadow', T.shadow + (1 - T.shadow) * 0.45 * lifted);
+    p.set('uWeave', T.weave);
+    p.set('uFuzz', T.fuzz);
+    p.set('uVignette', T.vignette);
     p.set('uTime', reduced ? 0 : time);
     p.draw(this.w, this.h);
   };
@@ -671,7 +703,7 @@
 
   function start() {
     try {
-      faces = { front: new Face('front', faceEls.front, 0.6), back: new Face('back', faceEls.back, 2.3) };
+      faces = { front: new Face('front', faceEls.front), back: new Face('back', faceEls.back) };
       table = new Table(tableCanvas);
       html.classList.add('gl');
       S.gl = true;
