@@ -1,5 +1,5 @@
 /*
- * augustine.io/v2 — the card is real.
+ * augustine.io — the card is real.
  *
  * No dependencies. Three tiny WebGL2 passes:
  *   - one per card face: bone paper with a watermark, letterpress type, a
@@ -791,7 +791,7 @@
     if (el && el === S.hot.el) { clearHot(); wake(); }
   });
 
-  // Email: hovering shows the address on the line beneath, clicking copies it.
+  // Email: hovering says what a click will do on the line beneath; clicking copies the address.
   var email = card.querySelector('.email');
   var note = card.querySelector('.note');
   var address = email.getAttribute('data-email');
@@ -803,10 +803,10 @@
     wake();
   }
   if (hoverable) {
-    email.addEventListener('pointerenter', function () { if (!copied) setNote(address); });
+    email.addEventListener('pointerenter', function () { if (!copied) setNote('click to copy'); });
     email.addEventListener('pointerleave', function () { if (!copied) setNote(''); });
   }
-  email.addEventListener('focus', function () { if (!copied) setNote(address); });
+  email.addEventListener('focus', function () { if (!copied) setNote('click to copy'); });
   email.addEventListener('blur', function () { if (!copied) setNote(''); });
   email.addEventListener('click', function (e) {
     if (!navigator.clipboard) return;
@@ -816,7 +816,7 @@
       setNote('copied');
       setTimeout(function () {
         copied = false;
-        setNote((hoverable && email.matches(':hover')) || email.matches(':focus') ? address : '');
+        setNote((hoverable && email.matches(':hover')) || email.matches(':focus') ? 'click to copy' : '');
       }, 1500);
     });
   });

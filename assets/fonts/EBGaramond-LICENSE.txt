@@ -1,3 +1,3 @@
 EB Garamond by Georg Duffner and Octavio Pardo.
 Licensed under the SIL Open Font License 1.1: https://openfontlicense.org
-Latin subsets served by Google Fonts, self-hosted here for augustine.io/v2.
+Latin subsets served by Google Fonts, self-hosted here for augustine.io.
