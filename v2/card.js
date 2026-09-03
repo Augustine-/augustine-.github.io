@@ -41,8 +41,8 @@
       paper: [0.92, 0.905, 0.865], ink: [0.13, 0.12, 0.11], cardAmb: 0.24, cardPow: 1.25
     },
     light: {
-      bg: '#e6e4df',
-      table: [0.93, 0.925, 0.91], tableAmb: 0.86, tablePow: 0.26, shadow: 0.62, weave: 0.045, fuzz: 0.035, vignette: 0.22,
+      bg: '#d9d7d1',
+      table: [0.875, 0.87, 0.855], tableAmb: 0.84, tablePow: 0.26, shadow: 0.62, weave: 0.045, fuzz: 0.035, vignette: 0.26,
       lightCol: [1.0, 0.99, 0.96],
       paper: [0.975, 0.97, 0.955], ink: [0.12, 0.11, 0.10], cardAmb: 0.82, cardPow: 0.42
     }
@@ -194,7 +194,7 @@
     '  float pen = 8.0 + uCardH * 1.5;',
     '  float sha = mix(uShadow, 1.0, smoothstep(-pen * 0.3, pen, sd));',
     // the weave: threads a few pixels apart, plus fuzz
-    '  float f = 6.28318 / (3.2 * uDpr);',
+    '  float f = 6.28318 / (2.4 * uDpr);',
     '  float weave = sin(p.x * f) * sin(p.y * f);',
     '  float fuzz = vnoise(p * 0.45 / uDpr) * 0.6 + vnoise(p * 0.09 / uDpr) * 0.4 - 0.5;',
     '  float tex = 1.0 + uWeave * weave + uFuzz * fuzz;',
@@ -210,7 +210,7 @@
   /* ------------------------------------------------------------------ */
 
   function Pass(canvas, fsSrc, alpha) {
-    var gl = canvas.getContext('webgl2', { alpha: !!alpha, antialias: false, depth: false, stencil: false, premultipliedAlpha: true });
+    var gl = canvas.getContext('webgl2', { alpha: !!alpha, antialias: false, depth: false, stencil: false, premultipliedAlpha: true, powerPreference: 'high-performance' });
     if (!gl) throw new Error('no webgl2');
     function sh(type, src) {
       var s = gl.createShader(type);
@@ -422,11 +422,12 @@
   function Table(canvas) {
     this.canvas = canvas;
     this.pass = new Pass(canvas, TABLE_FS);
+    this.dpr = Math.min(DPR, 1);
     this.w = 0; this.h = 0;
   }
   Table.prototype.resize = function () {
-    this.w = Math.round(window.innerWidth * DPR);
-    this.h = Math.round(window.innerHeight * DPR);
+    this.w = Math.round(window.innerWidth * this.dpr);
+    this.h = Math.round(window.innerHeight * this.dpr);
     this.canvas.width = this.w;
     this.canvas.height = this.h;
   };
@@ -434,15 +435,16 @@
     var p = this.pass, gl = p.gl;
     var lifted = clamp((cardH - S.cardH) / (S.W * 0.08), 0, 1);
     gl.useProgram(p.prog);
+    var d = this.dpr;
     p.set('uRes', [this.w, this.h]);
-    p.set('uDpr', DPR);
-    p.set('uLight', [S.light.x * DPR, S.light.y * DPR]);
-    p.set('uLightH', S.lightH * DPR);
-    p.set('uCardC', [S.cx * DPR, S.cy * DPR]);
-    p.set('uCardHalf', [S.W / 2 * DPR, S.H / 2 * DPR]);
-    p.set('uCardH', cardH * DPR);
+    p.set('uDpr', d);
+    p.set('uLight', [S.light.x * d, S.light.y * d]);
+    p.set('uLightH', S.lightH * d);
+    p.set('uCardC', [S.cx * d, S.cy * d]);
+    p.set('uCardHalf', [S.W / 2 * d, S.H / 2 * d]);
+    p.set('uCardH', cardH * d);
     p.set('uFlipScale', [Math.abs(M[0]), Math.abs(M[4])]);
-    p.set('uRadius', S.W * 0.035 * DPR);
+    p.set('uRadius', S.W * 0.035 * d);
     p.set('uTable', T.table);
     p.set('uAmbient', T.tableAmb);
     p.set('uPower', T.tablePow);
@@ -498,34 +500,45 @@
   }
   function settled() {
     var f = S.flip;
-    return !f.dragging && Math.abs(f.a - f.target) < 1.5 && Math.abs(f.v) < 20;
+    return !f.dragging && f.a === 0 && f.target === 0;
   }
-  // Still wobbling from the landing, but near enough to rest that a new turn can take over.
+  // Within reach of rest: a completed half-turn plus a small wobble, or the landing wobble.
   function nearlySettled() {
     var f = S.flip;
-    return !f.dragging && f.target === 0 && Math.abs(f.a) < 35;
+    if (f.dragging) return false;
+    var near = Math.round(f.a / 180) * 180;
+    return Math.abs(f.a - near) < 35;
   }
-  // Start turning about an axis. The face that will be on show at the end gets a
-  // transform that makes it read upright once it arrives; it is hidden right now.
+  // Fold whole half-turns into q and put q, F and B back in canonical form. Whatever
+  // remains of `a` keeps the card exactly where it is on screen.
+  function fold(near) {
+    var f = S.flip;
+    var R = f.axis === 'x' ? rotXm(near * DEG) : rotYm(near * DEG);
+    var q = msnap(mmul(R, f.q));
+    f.q = mvec(q, [0, 0, 1])[2] > 0 ? ID : RY180;
+    f.F = ID; f.B = RY180;
+    f.a -= near; f.target = 0;
+  }
+  // Start turning about an axis. Any finished half-turn is folded in first. The face
+  // that will be on show at the end gets a transform that makes it read upright once
+  // it arrives; it is hidden right now.
   function beginFlip(axis) {
     var f = S.flip;
-    if (!settled() && !nearlySettled()) return false;
-    f.axis = axis; f.a = 0; f.v = 0; f.target = 0;
+    if (!nearlySettled()) return false;
+    fold(Math.round(f.a / 180) * 180);
+    if (axis !== f.axis) { f.a = 0; f.v = 0; }
+    f.axis = axis;
     var qEnd = msnap(mmul(axis === 'x' ? RX180 : RY180, f.q));
-    var n = mvec(qEnd, [0, 0, 1]);
-    if (n[2] > 0) f.F = mT(qEnd); else f.B = mT(qEnd);
+    if (mvec(qEnd, [0, 0, 1])[2] > 0) f.F = mT(qEnd); else f.B = mT(qEnd);
     applyFaceTransforms();
     return true;
   }
-  // A turn has ended (or was abandoned): fold it into q and reset to the canonical form.
+  // A turn has ended: fold it in and come to rest.
   function settleFlip() {
     var f = S.flip;
-    var R = f.axis === 'x' ? rotXm(f.target * DEG) : rotYm(f.target * DEG);
-    var q = msnap(mmul(R, f.q));
-    var n = mvec(q, [0, 0, 1]);
-    if (n[2] > 0) { f.q = ID; } else { f.q = RY180; }
-    f.F = ID; f.B = RY180;
-    f.a = 0; f.v = 0; f.target = 0;
+    f.a = f.target;
+    fold(f.target);
+    f.a = 0; f.v = 0;
     applyFaceTransforms();
   }
   // Aim the current turn at a new angle. The face that will be on show at the end gets
@@ -549,7 +562,7 @@
   // Click-to-flip: a horizontal turn, or one more half-turn if the card is already moving.
   function requestFlip() {
     var f = S.flip;
-    if (settled() || nearlySettled()) {
+    if (nearlySettled()) {
       if (!beginFlip('y')) return;
       flipTo(180);
     } else if (!f.dragging) {
@@ -603,7 +616,7 @@
       ty = S.cy + Math.sin(t * 0.26) * S.H * 0.75;
     }
     S.light.tx = tx; S.light.ty = ty;
-    var k = reduced ? 1 : 1 - Math.exp(-dt * 12);
+    var k = reduced ? 1 : 1 - Math.exp(-dt * 22);
     S.light.x += (tx - S.light.x) * k;
     S.light.y += (ty - S.light.y) * k;
 
@@ -621,7 +634,7 @@
     // --- flip ---
     var f = S.flip;
     if (!f.dragging && !reduced) {
-      if (Math.abs(f.a - f.target) > 0.02 || Math.abs(f.v) > 0.05) {
+      if (Math.abs(f.a - f.target) > 0.05 || Math.abs(f.v) > 0.5) {
         var r3 = spring(f.a, f.v, f.target, 60, 7.5, dt);
         f.a = r3[0]; f.v = r3[1];
       } else if (f.a !== 0 || f.target !== 0) {
@@ -687,8 +700,8 @@
   // only once it's clearly a drag, so plain clicks still reach the links.
   var drag = null, suppressClick = false;
   card.addEventListener('pointerdown', function (e) {
-    if (e.button !== 0 || !(settled() || nearlySettled())) return;
-    drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false, axis: 'y', last: e.clientX, lastT: performance.now(), v: 0 };
+    if (e.button !== 0 || !nearlySettled()) return;
+    drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false, axis: 'y', a0: 0, last: e.clientX, lastT: performance.now(), v: 0 };
   });
   card.addEventListener('pointermove', function (e) {
     if (!drag || e.pointerId !== drag.id) return;
@@ -697,6 +710,7 @@
       if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
       drag.axis = Math.abs(dx) >= Math.abs(dy) ? 'y' : 'x';
       if (!beginFlip(drag.axis)) { drag = null; return; }
+      drag.a0 = S.flip.a;
       drag.moved = true;
       drag.last = drag.axis === 'y' ? e.clientX : e.clientY;
       S.flip.dragging = true;
@@ -710,7 +724,7 @@
     var delta = drag.axis === 'y' ? dx : dy;
     drag.v = drag.v * 0.6 + (sign * (pos - drag.last) / dtm * 1000 / span * 180) * 0.4; // deg/s
     drag.last = pos; drag.lastT = now;
-    S.flip.a = sign * delta / span * 180;
+    S.flip.a = drag.a0 + sign * delta / span * 180;
     wake();
   });
   function endDrag(e) {

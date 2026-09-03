@@ -45,7 +45,7 @@
 }
 
 :root[data-theme="light"] {
-    --bg: #e6e4df;
+    --bg: #d9d7d1;
     --fg: #1b1a17;
     --muted: #6a665e;
     --hint: #9a968d;
