@@ -39,7 +39,7 @@
     --card-w: min(88vw, 600px);
     --card-ratio: 1.75;                          /* a real card: 3.5in x 2in */
     --card-h: calc(var(--card-w) / var(--card-ratio));
-    --r: calc(var(--card-w) * 0.035);            /* corner radius */
+    --r: 0px;                                    /* corner radius: a real card is cut square */
     --thick: 2px;                                /* card stock */
     --fs: 1cqw;                                  /* type scale, relative to the face */
 }

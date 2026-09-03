@@ -140,7 +140,7 @@
     '  float g2 = vnoise(pix * 0.12 + 7.0) - 0.5;',
     '  float fib = vnoise(vec2(pix.x * 0.07, pix.y * 1.4) + 3.0) - 0.5;',
     '  vec2 gN = (vec2(g1, fib) * 0.04 + vec2(g2) * 0.015) * (1.0 - gloss);',
-    '  vec3 N = normalize(vec3(-dh * mix(6.0, 3.8, gloss) + gN, 1.0));',
+    '  vec3 N = normalize(vec3(-dh * mix(4.5, 3.8, gloss) + gN, 1.0));',
     '  vec3 P = vec3(vUv.x - 0.5, (vUv.y - 0.5) * uAspect, 0.0);',
     '  vec3 Lv = uLight - P; float dist = length(Lv); vec3 L = Lv / dist;',
     '  vec3 V = normalize(uView - P);',
@@ -154,7 +154,7 @@
     '  vec3 inkCol = mix(uInk, vec3(0.018, 0.017, 0.016), gloss);',
     '  vec3 base = mix(paper, inkCol, ink);',
     '  float pressed = max(0.5 - s.b, 0.0) * 2.0;',
-    '  float cavity = 1.0 - pressed * 0.22;',
+    '  float cavity = 1.0 - pressed * 0.14;',
     '  vec3 col = base * cavity * (uAmbient + ndl * att * uLightCol);',
     // specular: satin on the paper, a hard lacquer on the gloss ink, Schlick fresnel on both
     '  float fres = pow(1.0 - ndv, 5.0);',
@@ -289,19 +289,19 @@
       }
     }
   }
-  // Relief -> B channel, centred on 0.5: gloss type (R and G) is raised, plain ink (R only)
-  // is pressed. Three box passes approximate a gaussian. The watermark was drawn into B
-  // beforehand, so it is moved to A first.
-  function heightMap(data, w, h, r) {
+  // Relief -> B channel, centred on 0.5. `depth` is a second canvas: R is how far raised
+  // (gloss type), G how far pressed (plain ink). Three box passes approximate a gaussian;
+  // pressed type gets a narrower bevel than raised. The watermark was drawn into B of
+  // the main canvas beforehand, so it is moved to A first.
+  function heightMap(data, depth, w, h, rUp, rDown) {
     var n = w * h, up = new Float32Array(n), down = new Float32Array(n), tmp = new Float32Array(n), i, v;
     for (i = 0; i < n; i++) {
       data[i * 4 + 3] = data[i * 4 + 2];
-      var g = data[i * 4 + 1];
-      up[i] = g / 255;
-      down[i] = Math.max(data[i * 4] - g, 0) / 255;
+      up[i] = depth[i * 4] / 255;
+      down[i] = depth[i * 4 + 1] / 255;
     }
-    for (i = 0; i < 3; i++) { boxBlurH(up, tmp, w, h, r); boxBlurV(tmp, up, w, h, r); }
-    for (i = 0; i < 3; i++) { boxBlurH(down, tmp, w, h, r); boxBlurV(tmp, down, w, h, r); }
+    for (i = 0; i < 3; i++) { boxBlurH(up, tmp, w, h, rUp); boxBlurV(tmp, up, w, h, rUp); }
+    for (i = 0; i < 3; i++) { boxBlurH(down, tmp, w, h, rDown); boxBlurV(tmp, down, w, h, rDown); }
     for (i = 0; i < n; i++) {
       v = 0.5 + 0.5 * (up[i] - down[i]);
       data[i * 4 + 2] = Math.max(0, Math.min(255, (v * 255 + 0.5) | 0));
@@ -335,23 +335,31 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     this.off = document.createElement('canvas');
     this.octx = this.off.getContext('2d', { willReadFrequently: true });
+    this.dep = document.createElement('canvas');
+    this.dctx = this.dep.getContext('2d', { willReadFrequently: true });
     this.w = 0; this.h = 0;
   }
   Face.prototype.resize = function (W, H) {
     this.w = Math.max(2, Math.round(W * DPR));
     this.h = Math.max(2, Math.round(H * DPR));
-    this.canvas.width = this.off.width = this.w;
-    this.canvas.height = this.off.height = this.h;
+    this.canvas.width = this.off.width = this.dep.width = this.w;
+    this.canvas.height = this.off.height = this.dep.height = this.h;
     this.paint();
   };
   // Draw the DOM's type onto the offscreen canvas, at the DOM's own positions.
   Face.prototype.paint = function () {
-    var ctx = this.octx, face = this.el, w = this.w, h = this.h;
+    var ctx = this.octx, dctx = this.dctx, face = this.el, w = this.w, h = this.h;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, w, h);
     ctx.scale(DPR, DPR);
     ctx.textBaseline = 'middle';
+    dctx.setTransform(1, 0, 0, 1, 0, 0);
+    dctx.fillStyle = '#000';
+    dctx.fillRect(0, 0, w, h);
+    dctx.scale(DPR, DPR);
+    dctx.textBaseline = 'middle';
+    dctx.textAlign = 'left';
     // the watermark, into B for now (heightMap moves it to A)
     var wmText = face.getAttribute('data-watermark');
     if (wmText) {
@@ -379,17 +387,26 @@
       var x0 = r.x + (parseFloat(cs.paddingLeft) || 0);
       var cy = r.y + r.h / 2;
       var fs = parseFloat(cs.fontSize);
+      // how deep the impression is: big type gets full relief, small type a shallow, crisp one
+      var depth = clamp((fs - 9) / 20, 0.22, 1);
+      var depthCol = gloss ? 'rgb(' + Math.round(depth * 255) + ',0,0)' : 'rgb(0,' + Math.round(depth * 255) + ',0)';
       ctx.fillStyle = gloss ? 'rgb(255,255,0)' : 'rgb(' + Math.round(ink * 255) + ',0,0)';
       var tw = drawRun(ctx, text, x0, cy, tracking);
+      dctx.font = ctx.font;
+      dctx.fillStyle = depthCol;
+      drawRun(dctx, text, x0, cy, tracking);
       if (el.tagName === 'A' || glossRule) {
         var th = Math.max(1, fs * 0.055);
         var ty = Math.round((cy + fs * 0.5) * DPR) / DPR;
         ctx.fillStyle = glossRule ? 'rgb(255,255,0)' : 'rgb(' + Math.round(ink * 0.55 * 255) + ',0,0)';
         ctx.fillRect(x0, ty, tw, th);
+        dctx.fillStyle = glossRule ? 'rgb(' + Math.round(depth * 255) + ',0,0)' : 'rgb(0,' + Math.round(depth * 0.6 * 255) + ',0)';
+        dctx.fillRect(x0, ty, tw, th);
       }
     }
     var img = ctx.getImageData(0, 0, w, h);
-    heightMap(img.data, w, h, Math.max(1, Math.round(1.6 * DPR)));
+    var dep = dctx.getImageData(0, 0, w, h);
+    heightMap(img.data, dep.data, w, h, Math.max(1, Math.round(1.6 * DPR)), Math.max(1, Math.round(1.0 * DPR)));
     var gl = this.pass.gl;
     gl.bindTexture(gl.TEXTURE_2D, this.tex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, img.data);
@@ -404,7 +421,7 @@
     p.set('uTexel', [1 / this.w, 1 / this.h]);
     p.set('uAspect', this.h / this.w);
     p.set('uSize', [S.W, S.H]);
-    p.set('uRadius', S.W * 0.035);
+    p.set('uRadius', 0.0);
     p.set('uLight', light);
     p.set('uView', view);
     p.set('uTime', time);
@@ -444,7 +461,7 @@
     p.set('uCardHalf', [S.W / 2 * d, S.H / 2 * d]);
     p.set('uCardH', cardH * d);
     p.set('uFlipScale', [Math.abs(M[0]), Math.abs(M[4])]);
-    p.set('uRadius', S.W * 0.035 * d);
+    p.set('uRadius', 0.0);
     p.set('uTable', T.table);
     p.set('uAmbient', T.tableAmb);
     p.set('uPower', T.tablePow);
