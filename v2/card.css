@@ -201,10 +201,10 @@ html:not(.gl) canvas.paper { display: none; }
     color: var(--ink);
     font-family: var(--serif);
 }
-/* With WebGL the shader draws the type; the DOM copy stays for hit-testing and a11y. */
+/* With WebGL the shader draws the type; the DOM copy stays for hit-testing and a11y.
+   Every descendant, or a muted colour further down would show through as a second copy. */
 html.gl .content,
-html.gl .content a,
-html.gl .content button { color: transparent; }
+html.gl .content * { color: transparent; }
 
 [data-t] { white-space: nowrap; }
 
