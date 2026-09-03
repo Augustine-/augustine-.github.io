@@ -10,8 +10,9 @@
  * transparent DOM text on top lines up with what the shader renders. That
  * keeps the links real: clickable, focusable, readable by screen readers.
  *
- * Coordinates follow CSS: x right, y down, z toward the viewer. Card-space
- * units are card widths, origin at the card's centre.
+ * Orientation is a rotation matrix, so the card flips about either axis and
+ * the face on show is always upright. Coordinates follow CSS: x right,
+ * y down, z toward the viewer. Card-space units are card widths.
  */
 (function () {
   'use strict';
@@ -31,7 +32,7 @@
   var DEG = Math.PI / 180;
   var IDLE_MS = 4000;
 
-  // Room presets. Colours are linear-ish display values; tuned by eye.
+  // Room presets. Colours are display values, tuned by eye.
   var THEMES = {
     dark: {
       bg: '#0a0a0b',
@@ -47,6 +48,33 @@
     }
   };
 
+  /* ------------------------------------------------------------------ */
+  /* small matrices (row-major 3x3, CSS handedness)                      */
+  /* ------------------------------------------------------------------ */
+
+  var ID = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  var RX180 = [1, 0, 0, 0, -1, 0, 0, 0, -1];
+  var RY180 = [-1, 0, 0, 0, 1, 0, 0, 0, -1];
+  function mmul(A, B) {
+    var r = new Array(9);
+    for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) {
+      r[i * 3 + j] = A[i * 3] * B[j] + A[i * 3 + 1] * B[3 + j] + A[i * 3 + 2] * B[6 + j];
+    }
+    return r;
+  }
+  function mvec(A, v) {
+    return [A[0] * v[0] + A[1] * v[1] + A[2] * v[2], A[3] * v[0] + A[4] * v[1] + A[5] * v[2], A[6] * v[0] + A[7] * v[1] + A[8] * v[2]];
+  }
+  function mT(A) { return [A[0], A[3], A[6], A[1], A[4], A[7], A[2], A[5], A[8]]; }
+  function msnap(A) { return A.map(function (n) { return Math.round(n); }); }
+  function rotXm(a) { var c = Math.cos(a), s = Math.sin(a); return [1, 0, 0, 0, c, -s, 0, s, c]; }
+  function rotYm(a) { var c = Math.cos(a), s = Math.sin(a); return [c, 0, s, 0, 1, 0, -s, 0, c]; }
+  function css3d(A) {
+    var m = [A[0], A[3], A[6], 0, A[1], A[4], A[7], 0, A[2], A[5], A[8], 0, 0, 0, 0, 1];
+    return 'matrix3d(' + m.map(function (n) { return +n.toFixed(5); }).join(',') + ')';
+  }
+  function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
   var S = {
     W: 0, H: 0, cx: 0, cy: 0, persp: 1400,
     lightH: 0, cardH: 0,
@@ -54,8 +82,10 @@
     pointer: { x: 0, y: 0, has: false, t: -1e9, down: false },
     orient: null,
     tilt: { x: 0, y: 0, vx: 0, vy: 0 },
-    flip: { a: 0, v: 0, target: 0, dragging: false },
-    hot: { face: null, rect: [0, 0, 0, 0], amt: 0, target: 0 },
+    // q: settled orientation (identity or RY180). During a flip the card is R_axis(a) * q.
+    // F / B: each face's own transform, chosen so the face on show reads upright.
+    flip: { q: ID, F: ID, B: RY180, axis: 'y', a: 0, v: 0, target: 0, dragging: false },
+    hot: { el: null, face: null, rect: [0, 0, 0, 0], amt: 0, target: 0 },
     intro: { t0: 0, active: false },
     side: 0,
     theme: html.getAttribute('data-theme') === 'light' ? 'light' : 'dark',
@@ -147,7 +177,7 @@
     'precision highp float;',
     'out vec4 fragColor;',
     'uniform vec2 uRes; uniform float uDpr; uniform vec2 uLight; uniform float uLightH;',
-    'uniform vec2 uCardC; uniform vec2 uCardHalf; uniform float uCardH; uniform float uFlipCos; uniform float uRadius;',
+    'uniform vec2 uCardC; uniform vec2 uCardHalf; uniform float uCardH; uniform vec2 uFlipScale; uniform float uRadius;',
     'uniform vec3 uTable; uniform float uAmbient; uniform float uPower; uniform vec3 uLightCol; uniform float uShadow; uniform float uTime;',
     'uniform float uWeave; uniform float uFuzz; uniform float uVignette;',
     NOISE,
@@ -159,8 +189,8 @@
     '  float lamp = uPower / (0.15 + dot(d, d) * 5.0);',
     '  float k = uCardH / max(uLightH - uCardH, 1.0);',
     '  vec2 shc = uCardC + (uCardC - uLight) * k;',
-    '  vec2 shh = uCardHalf * (1.0 + k); shh.x *= max(abs(uFlipCos), 0.03);',
-    '  float sd = sdRR(p - shc, shh, uRadius * (1.0 + k));',
+    '  vec2 shh = uCardHalf * (1.0 + k) * max(uFlipScale, vec2(0.03));',
+    '  float sd = sdRR(p - shc, shh, min(uRadius * (1.0 + k), min(shh.x, shh.y)));',
     '  float pen = 8.0 + uCardH * 1.5;',
     '  float sha = mix(uShadow, 1.0, smoothstep(-pen * 0.3, pen, sd));',
     // the weave: threads a few pixels apart, plus fuzz
@@ -278,6 +308,19 @@
     }
   }
 
+  // Draw one run of text the way the DOM laid it out: from the left edge of its box,
+  // one glyph at a time when it is tracked. Returns the run's width.
+  function drawRun(ctx, text, x, y, tracking) {
+    if (!tracking) { ctx.fillText(text, x, y); return ctx.measureText(text).width; }
+    var x0 = x;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      ctx.fillText(ch, x, y);
+      x += ctx.measureText(ch).width + tracking;
+    }
+    return x - x0 - tracking;
+  }
+
   function Face(name, el) {
     this.name = name;
     this.el = el;
@@ -308,37 +351,41 @@
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, w, h);
     ctx.scale(DPR, DPR);
-    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     // the watermark, into B for now (heightMap moves it to A)
     var wmText = face.getAttribute('data-watermark');
     if (wmText) {
       var cw = w / DPR, ch = h / DPR;
-      ctx.font = 'normal normal ' + Math.round(Math.min(cw, ch) * 0.62) + 'px ' + getComputedStyle(face).fontFamily;
+      ctx.textAlign = 'center';
+      ctx.font = 'normal 500 ' + Math.round(Math.min(cw, ch) * 0.62) + 'px ' + getComputedStyle(face).fontFamily;
       ctx.fillStyle = 'rgb(0,0,255)';
       ctx.fillText(wmText, cw / 2, ch * 0.52);
     }
+    ctx.textAlign = 'left';
     var items = face.querySelectorAll('[data-t]');
     for (var i = 0; i < items.length; i++) {
       var el = items[i];
       if (!el.offsetWidth) continue; // display:none
+      var text = el.textContent.trim();
+      if (!text) continue;
       var r = rectIn(el, face);
       var cs = getComputedStyle(el);
       ctx.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+      if (cs.textTransform === 'uppercase') text = text.toUpperCase();
+      var tracking = parseFloat(cs.letterSpacing) || 0;
       var gloss = el.classList.contains('gloss');
       var glossRule = el.classList.contains('gloss-rule');
       var ink = gloss ? 1 : parseFloat(el.getAttribute('data-ink') || '1');
-      var text = el.textContent.trim();
-      var cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+      var x0 = r.x + (parseFloat(cs.paddingLeft) || 0);
+      var cy = r.y + r.h / 2;
       var fs = parseFloat(cs.fontSize);
       ctx.fillStyle = gloss ? 'rgb(255,255,0)' : 'rgb(' + Math.round(ink * 255) + ',0,0)';
-      ctx.fillText(text, cx, cy);
+      var tw = drawRun(ctx, text, x0, cy, tracking);
       if (el.tagName === 'A' || glossRule) {
-        var tw = ctx.measureText(text).width;
-        var th = Math.max(1.5, fs * 0.075);
-        var ty = Math.round((cy + fs * 0.55) * DPR) / DPR;
-        ctx.fillStyle = glossRule ? 'rgb(255,255,0)' : 'rgb(' + Math.round(ink * 0.6 * 255) + ',0,0)';
-        ctx.fillRect(cx - tw / 2, ty, tw, th);
+        var th = Math.max(1, fs * 0.055);
+        var ty = Math.round((cy + fs * 0.5) * DPR) / DPR;
+        ctx.fillStyle = glossRule ? 'rgb(255,255,0)' : 'rgb(' + Math.round(ink * 0.55 * 255) + ',0,0)';
+        ctx.fillRect(x0, ty, tw, th);
       }
     }
     var img = ctx.getImageData(0, 0, w, h);
@@ -383,7 +430,7 @@
     this.canvas.width = this.w;
     this.canvas.height = this.h;
   };
-  Table.prototype.render = function (T, time, flipCos, cardH) {
+  Table.prototype.render = function (T, time, M, cardH) {
     var p = this.pass, gl = p.gl;
     var lifted = clamp((cardH - S.cardH) / (S.W * 0.08), 0, 1);
     gl.useProgram(p.prog);
@@ -394,7 +441,7 @@
     p.set('uCardC', [S.cx * DPR, S.cy * DPR]);
     p.set('uCardHalf', [S.W / 2 * DPR, S.H / 2 * DPR]);
     p.set('uCardH', cardH * DPR);
-    p.set('uFlipCos', flipCos);
+    p.set('uFlipScale', [Math.abs(M[0]), Math.abs(M[4])]);
     p.set('uRadius', S.W * 0.035 * DPR);
     p.set('uTable', T.table);
     p.set('uAmbient', T.tableAmb);
@@ -409,13 +456,8 @@
   };
 
   /* ------------------------------------------------------------------ */
-  /* geometry                                                            */
+  /* geometry and state                                                  */
   /* ------------------------------------------------------------------ */
-
-  // CSS rotateX / rotateY, applied to a vector.
-  function rotX(v, a) { var c = Math.cos(a), s = Math.sin(a); return [v[0], c * v[1] - s * v[2], s * v[1] + c * v[2]]; }
-  function rotY(v, a) { var c = Math.cos(a), s = Math.sin(a); return [c * v[0] + s * v[2], v[1], -s * v[0] + c * v[2]]; }
-  function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
   function measure() {
     var r = scene.getBoundingClientRect();
@@ -426,10 +468,6 @@
     S.cardH = Math.max(18, S.W * 0.05);      // the card floats a little off the table
     S.persp = parseFloat(getComputedStyle(scene).perspective) || 1400;
   }
-
-  /* ------------------------------------------------------------------ */
-  /* state                                                               */
-  /* ------------------------------------------------------------------ */
 
   var faces = null, table = null;
 
@@ -447,17 +485,88 @@
     return faceEls.front.contains(el) ? faces.front : faces.back;
   }
 
+  // The card's rotation right now (without the tilt).
+  function flipMatrix() {
+    var f = S.flip;
+    var R = f.axis === 'x' ? rotXm(f.a * DEG) : rotYm(f.a * DEG);
+    return mmul(R, f.q);
+  }
+  function applyFaceTransforms() {
+    var f = S.flip;
+    faceEls.front.style.transform = css3d(f.F) + ' translateZ(1px)';
+    faceEls.back.style.transform = css3d(f.B) + ' translateZ(1px)';
+  }
+  function settled() {
+    var f = S.flip;
+    return !f.dragging && Math.abs(f.a - f.target) < 1.5 && Math.abs(f.v) < 20;
+  }
+  // Still wobbling from the landing, but near enough to rest that a new turn can take over.
+  function nearlySettled() {
+    var f = S.flip;
+    return !f.dragging && f.target === 0 && Math.abs(f.a) < 35;
+  }
+  // Start turning about an axis. The face that will be on show at the end gets a
+  // transform that makes it read upright once it arrives; it is hidden right now.
+  function beginFlip(axis) {
+    var f = S.flip;
+    if (!settled() && !nearlySettled()) return false;
+    f.axis = axis; f.a = 0; f.v = 0; f.target = 0;
+    var qEnd = msnap(mmul(axis === 'x' ? RX180 : RY180, f.q));
+    var n = mvec(qEnd, [0, 0, 1]);
+    if (n[2] > 0) f.F = mT(qEnd); else f.B = mT(qEnd);
+    applyFaceTransforms();
+    return true;
+  }
+  // A turn has ended (or was abandoned): fold it into q and reset to the canonical form.
+  function settleFlip() {
+    var f = S.flip;
+    var R = f.axis === 'x' ? rotXm(f.target * DEG) : rotYm(f.target * DEG);
+    var q = msnap(mmul(R, f.q));
+    var n = mvec(q, [0, 0, 1]);
+    if (n[2] > 0) { f.q = ID; } else { f.q = RY180; }
+    f.F = ID; f.B = RY180;
+    f.a = 0; f.v = 0; f.target = 0;
+    applyFaceTransforms();
+  }
+  // Aim the current turn at a new angle. The face that will be on show at the end gets
+  // its upright transform, but only if it is hidden right now; if it is visible it is
+  // already in canonical form and must not jump.
+  function flipTo(target) {
+    var f = S.flip;
+    f.target = target;
+    var R = f.axis === 'x' ? rotXm(target * DEG) : rotYm(target * DEG);
+    var qEnd = msnap(mmul(R, f.q));
+    var local = mT(qEnd);
+    var Mnow = flipMatrix();
+    if (mvec(qEnd, [0, 0, 1])[2] > 0) {
+      if (mvec(mmul(Mnow, f.F), [0, 0, 1])[2] < 0) f.F = local;
+    } else {
+      if (mvec(mmul(Mnow, f.B), [0, 0, 1])[2] < 0) f.B = local;
+    }
+    applyFaceTransforms();
+    if (reduced) { f.a = target; f.v = 0; settleFlip(); }
+  }
+  // Click-to-flip: a horizontal turn, or one more half-turn if the card is already moving.
+  function requestFlip() {
+    var f = S.flip;
+    if (settled() || nearlySettled()) {
+      if (!beginFlip('y')) return;
+      flipTo(180);
+    } else if (!f.dragging) {
+      flipTo(f.target === 0 ? 180 : f.target + (f.target > 0 ? 180 : -180));
+    } else {
+      return;
+    }
+    wake();
+  }
+
   function updateSide() {
-    var side = ((Math.round(S.flip.a / 180) % 2) + 2) % 2;
+    var n = mvec(flipMatrix(), [0, 0, 1]);
+    var side = n[2] >= 0 ? 0 : 1;
     if (side === S.side) return;
     S.side = side;
     faceEls.front.toggleAttribute('inert', side === 1);
     faceEls.back.toggleAttribute('inert', side === 0);
-  }
-
-  function flipTo(target) {
-    S.flip.target = target;
-    if (reduced) { S.flip.a = target; S.flip.v = 0; }
   }
 
   function spring(pos, vel, target, k, damp, dt) {
@@ -510,23 +619,30 @@
     }
 
     // --- flip ---
-    if (!S.flip.dragging && !reduced) {
-      var r3 = spring(S.flip.a, S.flip.v, S.flip.target, 60, 7.5, dt);
-      S.flip.a = r3[0]; S.flip.v = r3[1];
-      if (Math.abs(S.flip.a - S.flip.target) < 0.02 && Math.abs(S.flip.v) < 0.05) { S.flip.a = S.flip.target; S.flip.v = 0; }
+    var f = S.flip;
+    if (!f.dragging && !reduced) {
+      if (Math.abs(f.a - f.target) > 0.02 || Math.abs(f.v) > 0.05) {
+        var r3 = spring(f.a, f.v, f.target, 60, 7.5, dt);
+        f.a = r3[0]; f.v = r3[1];
+      } else if (f.a !== 0 || f.target !== 0) {
+        settleFlip();
+      }
     }
     updateSide();
 
     // --- hover glow ---
     S.hot.amt += (S.hot.target - S.hot.amt) * (reduced ? 1 : 1 - Math.exp(-dt * 14));
 
-    card.style.transform = 'rotateX(' + S.tilt.x.toFixed(3) + 'deg) rotateY(' + (S.tilt.y + S.flip.a).toFixed(3) + 'deg)';
-    card.classList.toggle('edge-on', Math.abs(Math.sin((S.tilt.y + S.flip.a) * DEG)) > 0.3);
+    var M = flipMatrix();
+    var tilt = mmul(rotXm(S.tilt.x * DEG), rotYm(S.tilt.y * DEG));
+    var Mw = mmul(tilt, M);
+    card.style.transform = 'rotateX(' + S.tilt.x.toFixed(3) + 'deg) rotateY(' + S.tilt.y.toFixed(3) + 'deg) ' + css3d(M);
+    card.classList.toggle('edge-on', Math.abs(mvec(Mw, [0, 0, 1])[2]) < 0.955);
 
-    if (faces) render(t);
+    if (faces) render(t, Mw);
 
-    var moving = S.intro.active || S.flip.dragging ||
-      Math.abs(S.flip.a - S.flip.target) > 0.01 ||
+    var moving = S.intro.active || f.dragging ||
+      f.a !== 0 || f.target !== 0 ||
       Math.abs(S.light.x - S.light.tx) + Math.abs(S.light.y - S.light.ty) > 0.3 ||
       Math.abs(S.hot.amt - S.hot.target) > 0.01 ||
       Math.abs(S.tilt.vx) + Math.abs(S.tilt.vy) > 0.01;
@@ -540,18 +656,17 @@
     requestAnimationFrame(frame);
   }
 
-  function render(t) {
+  function render(t, Mw) {
     var T = THEMES[S.theme];
-    var ax = S.tilt.x * DEG, b = (S.tilt.y + S.flip.a) * DEG;
-    var lift = S.cardH + Math.abs(Math.sin(S.flip.a * DEG)) * S.W * 0.08; // a card being flipped rises
+    var f = S.flip;
+    var lift = S.cardH + Math.abs(Math.sin(f.a * DEG)) * S.W * 0.08; // a card being turned rises
     var lw = [(S.light.x - S.cx) / S.W, (S.light.y - S.cy) / S.W, (S.lightH - lift) / S.W];
     var vw = [0, 0, S.persp / S.W];
-    var lc = rotY(rotX(lw, -ax), -b);
-    var vc = rotY(rotX(vw, -ax), -b);
-    var cb = Math.cos(b);
-    if (cb > -0.05) faces.front.render(lc, vc, T, t);
-    if (cb < 0.05) faces.back.render([-lc[0], lc[1], -lc[2]], [-vc[0], vc[1], -vc[2]], T, t);
-    table.render(T, t, cb, lift);
+    var Mf = mmul(Mw, f.F), Mb = mmul(Mw, f.B);
+    var nf = mvec(Mf, [0, 0, 1])[2], nb = mvec(Mb, [0, 0, 1])[2];
+    if (nf > -0.05) faces.front.render(mvec(mT(Mf), lw), mvec(mT(Mf), vw), T, t);
+    if (nb > -0.05) faces.back.render(mvec(mT(Mb), lw), mvec(mT(Mb), vw), T, t);
+    table.render(T, t, Mw, lift);
   }
 
   /* ------------------------------------------------------------------ */
@@ -568,26 +683,34 @@
   window.addEventListener('pointerup', function () { S.pointer.down = false; wake(); }, { passive: true });
   window.addEventListener('pointercancel', function () { S.pointer.down = false; }, { passive: true });
 
-  // Drag to flip. Pointer capture only once it's clearly a drag, so plain clicks still reach the links.
+  // Drag to turn the card, about whichever axis the drag starts along. Pointer capture
+  // only once it's clearly a drag, so plain clicks still reach the links.
   var drag = null, suppressClick = false;
   card.addEventListener('pointerdown', function (e) {
-    if (e.button !== 0) return;
-    drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, a0: S.flip.a, moved: false, lastX: e.clientX, lastT: performance.now(), v: 0 };
+    if (e.button !== 0 || !(settled() || nearlySettled())) return;
+    drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false, axis: 'y', last: e.clientX, lastT: performance.now(), v: 0 };
   });
   card.addEventListener('pointermove', function (e) {
     if (!drag || e.pointerId !== drag.id) return;
     var dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
     if (!drag.moved) {
-      if (Math.abs(dx) < 6 || Math.abs(dx) < Math.abs(dy)) return;
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      drag.axis = Math.abs(dx) >= Math.abs(dy) ? 'y' : 'x';
+      if (!beginFlip(drag.axis)) { drag = null; return; }
       drag.moved = true;
+      drag.last = drag.axis === 'y' ? e.clientX : e.clientY;
       S.flip.dragging = true;
       card.classList.add('dragging');
       try { card.setPointerCapture(e.pointerId); } catch (err) {}
     }
     var now = performance.now(), dtm = Math.max(1, now - drag.lastT);
-    drag.v = drag.v * 0.6 + ((e.clientX - drag.lastX) / dtm * 1000 / S.W * 180) * 0.4; // deg/s
-    drag.lastX = e.clientX; drag.lastT = now;
-    S.flip.a = drag.a0 + dx / S.W * 180;
+    var pos = drag.axis === 'y' ? e.clientX : e.clientY;
+    var span = drag.axis === 'y' ? S.W : S.H;
+    var sign = drag.axis === 'y' ? 1 : -1; // pulling the surface down tips the top edge toward you
+    var delta = drag.axis === 'y' ? dx : dy;
+    drag.v = drag.v * 0.6 + (sign * (pos - drag.last) / dtm * 1000 / span * 180) * 0.4; // deg/s
+    drag.last = pos; drag.lastT = now;
+    S.flip.a = sign * delta / span * 180;
     wake();
   });
   function endDrag(e) {
@@ -597,7 +720,7 @@
       card.classList.remove('dragging');
       S.flip.v = drag.v;
       var guess = S.flip.a + S.flip.v * 0.12;
-      flipTo(Math.round(guess / 180) * 180);
+      flipTo(clamp(Math.round(guess / 180), -1, 1) * 180);
       suppressClick = true;
       setTimeout(function () { suppressClick = false; }, 0);
       wake();
@@ -612,9 +735,18 @@
 
   // The flip buttons.
   var flips = card.querySelectorAll('.flip');
-  for (var f = 0; f < flips.length; f++) {
-    flips[f].addEventListener('click', function () { flipTo(S.flip.target + 180); wake(); });
-  }
+  for (var i = 0; i < flips.length; i++) flips[i].addEventListener('click', requestFlip);
+
+  // "links" opens the contact row in place.
+  var linksToggle = card.querySelector('.links-toggle');
+  linksToggle.addEventListener('click', function () {
+    faceEls.front.classList.add('open');
+    linksToggle.setAttribute('aria-expanded', 'true');
+    if (faces) faces.front.paint();
+    var first = card.querySelector('.contacts a');
+    if (first && linksToggle.matches(':focus-visible')) first.focus();
+    wake();
+  });
 
   // Hover: the shader darkens the ink under the cursor.
   card.addEventListener('pointerover', function (e) {
@@ -628,34 +760,37 @@
     if (el && el === S.hot.el) { clearHot(); wake(); }
   });
 
-  // Email: hover reveals the address, click copies it.
+  // Email: hovering shows the address on the line beneath, clicking copies it.
   var email = card.querySelector('.email');
+  var note = card.querySelector('.note');
   var address = email.getAttribute('data-email');
   var copied = false;
-  function setEmailText(s) {
-    if (email.textContent === s) return;
-    email.textContent = s;
+  function setNote(s) {
+    if (note.textContent === s) return;
+    note.textContent = s;
     if (faces) faces.front.paint();
     wake();
   }
   if (hoverable) {
-    email.addEventListener('pointerenter', function () { if (!copied) setEmailText(address); });
-    email.addEventListener('pointerleave', function () { if (!copied) setEmailText('email'); });
+    email.addEventListener('pointerenter', function () { if (!copied) setNote(address); });
+    email.addEventListener('pointerleave', function () { if (!copied) setNote(''); });
   }
+  email.addEventListener('focus', function () { if (!copied) setNote(address); });
+  email.addEventListener('blur', function () { if (!copied) setNote(''); });
   email.addEventListener('click', function (e) {
     if (!navigator.clipboard) return;
     e.preventDefault();
     navigator.clipboard.writeText(address).then(function () {
       copied = true;
-      setEmailText('copied!');
+      setNote('copied');
       setTimeout(function () {
         copied = false;
-        setEmailText(hoverable && email.matches(':hover') ? address : 'email');
+        setNote((hoverable && email.matches(':hover')) || email.matches(':focus') ? address : '');
       }, 1500);
     });
   });
 
-  // Phones: tilting the device moves the light. iOS wants a gesture before it will say yes.
+  // Phones: tilting the device moves the light. iOS wants a tap before it will say yes.
   function listenOrientation() {
     window.addEventListener('deviceorientation', function (e) {
       if (e.beta == null || e.gamma == null) return;
@@ -712,15 +847,15 @@
       html.classList.remove('gl');
     }
 
-    hint.textContent = !faces ? 'drag to flip' : (hoverable ? 'your cursor is a light · drag to flip' : 'tilt your phone · swipe to flip');
-
+    hint.textContent = hoverable ? 'drag to flip' : 'swipe to flip';
+    applyFaceTransforms();
     layout();
 
     if (!reduced) {
       // Tossed onto the table: it lands with a wobble while the lamp sweeps across.
       S.intro.active = true;
       S.intro.t0 = performance.now();
-      S.flip.a = -28; S.flip.v = 0;
+      if (settled()) { beginFlip('y'); S.flip.a = -28; S.flip.v = 0; }
       S.tilt.x = 9;
       S.light.x = S.cx - S.W * 1.15; S.light.y = S.cy + S.H * 0.35;
     } else {
@@ -739,7 +874,10 @@
   }
 
   if (document.fonts && document.fonts.load) {
-    document.fonts.load('16px MicroFLF').then(start, start);
+    Promise.all([
+      document.fonts.load('500 16px "EB Garamond"'),
+      document.fonts.load('italic 400 16px "EB Garamond"')
+    ]).then(start, start);
   } else {
     start();
   }

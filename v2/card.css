@@ -8,9 +8,18 @@
  */
 
 @font-face {
-    font-family: 'MicroFLF';
-    src: url('/assets/fonts/MicroFLF.ttf') format('truetype');
+    font-family: 'EB Garamond';
+    font-style: normal;
+    font-weight: 400 800;
     font-display: swap;
+    src: url('/assets/fonts/EBGaramond-Roman-latin.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'EB Garamond';
+    font-style: italic;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('/assets/fonts/EBGaramond-Italic-latin.woff2') format('woff2');
 }
 
 :root {
@@ -26,6 +35,7 @@
     --focus: #e8d9a8;
     --toggle-glyph: '\2600'; /* ☀ — click for light */
 
+    --serif: 'EB Garamond', Garamond, 'Hoefler Text', Baskerville, 'Palatino Linotype', Georgia, serif;
     --card-w: min(88vw, 600px);
     --card-ratio: 1.75;                          /* a real card: 3.5in x 2in */
     --card-h: calc(var(--card-w) / var(--card-ratio));
@@ -58,7 +68,7 @@ body {
     place-items: center;
     background: var(--bg);
     color: var(--fg);
-    font-family: 'MicroFLF', ui-monospace, monospace;
+    font-family: var(--serif);
     transition: background-color 0.3s ease;
     overflow-x: hidden;
 }
@@ -119,7 +129,7 @@ html:not(.gl) body {
     height: 100%;
     transform-style: preserve-3d;
     will-change: transform;
-    touch-action: pan-y;
+    touch-action: none;
     user-select: none;
     -webkit-user-select: none;
     cursor: grab;
@@ -189,9 +199,10 @@ html:not(.gl) canvas.paper { display: none; }
     text-align: center;
     padding: calc(var(--fs) * 4);
     color: var(--ink);
+    font-family: var(--serif);
 }
 /* With WebGL the shader draws the type; the DOM copy stays for hit-testing and a11y. */
-html.gl .content { color: transparent; }
+html.gl .content,
 html.gl .content a,
 html.gl .content button { color: transparent; }
 
@@ -201,6 +212,8 @@ html.gl .content button { color: transparent; }
 html:not(.gl) .content a { text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
 .content button {
     font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
     color: inherit;
     background: none;
     border: 0;
@@ -213,43 +226,72 @@ html:not(.gl) .content a { text-decoration: underline; text-underline-offset: 0.
     border-radius: 6px;
 }
 
+/* Tracked capitals: the trailing letter-space is balanced by an equal lead-in. */
+.caps {
+    text-transform: uppercase;
+    letter-spacing: var(--track);
+    padding-left: var(--track);
+}
+
 /* Without WebGL the raised gloss ink is plain ink with a hint of relief. */
 html:not(.gl) .gloss { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6), 0 -1px 0 rgba(0, 0, 0, 0.25); }
-html:not(.gl) .gloss-rule { border-bottom: 2px solid var(--ink); }
+html:not(.gl) .gloss-rule { border-bottom: 1px solid var(--ink); }
 
 /* ---- front ---- */
 .name {
+    --track: 0.22em;
     margin: 0;
-    font-size: calc(var(--fs) * 6.2);
-    font-weight: normal;
-    line-height: 1.1;
+    font-size: calc(var(--fs) * 4.6);
+    font-weight: 500;
+    line-height: 1.15;
 }
 .tagline {
-    margin: calc(var(--fs) * 0.6) 0 calc(var(--fs) * 3.4);
-    font-size: calc(var(--fs) * 2.7);
-    font-style: italic;
+    --track: 0.34em;
+    margin: calc(var(--fs) * 0.9) 0 0;
+    font-size: calc(var(--fs) * 2.0);
+    font-weight: 400;
 }
-.links {
+.actions {
+    margin-top: calc(var(--fs) * 4.4);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: calc(var(--fs) * 1.1);
-}
-.links a {
-    font-size: calc(var(--fs) * 2.9);
-    padding: 0 0.4em;
+    gap: calc(var(--fs) * 1.3);
 }
 .cta {
-    margin-top: calc(var(--fs) * 3.4);
-    font-size: calc(var(--fs) * 3.3);
-    padding: 0 0.4em;
+    --track: 0.26em;
+    font-size: calc(var(--fs) * 2.6);
+    font-weight: 500;
+}
+.links-toggle {
+    font-size: calc(var(--fs) * 2.2);
+    font-style: italic;
+}
+.contacts {
+    display: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0.3em 0.9em;
+    margin-top: calc(var(--fs) * 1.6);
+    font-size: calc(var(--fs) * 2.2);
+    letter-spacing: 0.03em;
+}
+.face.open .contacts { display: flex; }
+.face.open .links-toggle { display: none; }
+.note {
+    margin: calc(var(--fs) * 0.9) 0 0;
+    min-height: 1.4em;
+    font-size: calc(var(--fs) * 2.0);
+    font-style: italic;
 }
 
 /* ---- back ---- */
 .heading {
-    margin: 0 0 calc(var(--fs) * 2.8);
-    font-size: calc(var(--fs) * 4.6);
-    font-weight: normal;
+    --track: 0.26em;
+    margin: 0 0 calc(var(--fs) * 3.2);
+    font-size: calc(var(--fs) * 3.2);
+    font-weight: 500;
 }
 .projects {
     list-style: none;
@@ -263,22 +305,22 @@ html:not(.gl) .gloss-rule { border-bottom: 2px solid var(--ink); }
     display: flex;
     justify-content: center;
     align-items: baseline;
-    gap: 0.45em;
-    font-size: calc(var(--fs) * 2.8);
+    gap: 0.5em;
+    font-size: calc(var(--fs) * 2.6);
 }
-.projects a { padding: 0 0.15em; }
-.blurb { color: var(--ink-muted); }
+.projects a { font-weight: 500; padding: 0 0.1em; }
+.blurb { font-style: italic; color: var(--ink-muted); }
 .dash  { color: var(--ink-muted); }
 .flip-back {
-    margin: calc(var(--fs) * 3.6) 0 0;
+    margin: calc(var(--fs) * 3.8) 0 0;
     display: flex;
     justify-content: center;
     align-items: baseline;
-    gap: 0.45em;
-    font-size: calc(var(--fs) * 2.5);
+    gap: 0.4em;
+    font-size: calc(var(--fs) * 2.4);
 }
 .flip-back i { font-style: italic; }
-.flip-back button { padding: 0 0.3em; }
+.flip-back button { font-weight: 500; padding: 0 0.2em; }
 
 .mandala-wink {
     position: absolute;
@@ -308,9 +350,10 @@ html:not(.gl) .gloss-rule { border-bottom: 2px solid var(--ink); }
 .hint {
     margin: 1.6rem 0 0;
     min-height: 1.2em;
-    font-size: 0.8rem;
+    font-size: 0.95rem;
+    font-style: italic;
     color: var(--hint);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
     text-align: center;
     opacity: 0;
     transition: opacity 1.2s ease 0.8s;
@@ -324,10 +367,13 @@ html:not(.gl) .gloss-rule { border-bottom: 2px solid var(--ink); }
         --card-ratio: 0.5714;
         --fs: 1.6cqw;
     }
-    .name { font-size: calc(var(--fs) * 4.7); }
+    .name { --track: 0.14em; font-size: calc(var(--fs) * 3.1); }
+    .tagline { --track: 0.28em; }
+    .contacts { flex-direction: column; align-items: center; gap: 0.35em; }
+    .sep { display: none; }
     .projects li { flex-direction: column; align-items: center; gap: 0.15em; }
     .dash { display: none; }
-    .blurb { font-size: 0.85em; }
+    .blurb { font-size: 0.9em; }
 }
 
 @media (prefers-reduced-motion: reduce) {
