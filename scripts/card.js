@@ -28,7 +28,12 @@
   var toggle = document.querySelector('.theme-toggle');
   var themeMeta = document.querySelector('meta[name="theme-color"]');
   var THEME_KEY = 'augustine-io-theme';
-  var DPR = Math.min(window.devicePixelRatio || 1, 2);
+  var RAW_DPR = window.devicePixelRatio || 1;
+  var DPR = Math.min(RAW_DPR, 2);
+  // The faces live inside a live 3D tilt, so the compositor resamples them every frame and
+  // type drawn at 1:1 goes soft. Drawing the ink at up to twice device resolution makes that
+  // resample a clean box-filter instead of a smear. The relief stays at device resolution.
+  var SCALE = Math.min(RAW_DPR * 2, 3);
   var DEG = Math.PI / 180;
   var IDLE_MS = 4000;
 
@@ -106,14 +111,14 @@
     '  return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }'
   ].join('\n');
 
-  // Card face. Texture channels: R ink coverage, G gloss (raised, lacquered ink),
-  // B height (0.5 is flat; raised type above, pressed type below), A watermark.
+  // Card face. uTex (supersampled): R ink coverage, G gloss (raised, lacquered ink), B watermark.
+  // uHeight (device resolution): R height, 0.5 is flat; raised type above, pressed type below.
   // The canvas is transparent: the shader draws the card's own antialiased silhouette.
   var FACE_FS = [
     '#version 300 es',
     'precision highp float;',
     'in vec2 vUv; out vec4 fragColor;',
-    'uniform sampler2D uTex; uniform vec2 uTexel; uniform float uAspect; uniform vec2 uSize; uniform float uRadius;',
+    'uniform sampler2D uTex; uniform sampler2D uHeight; uniform vec2 uTexel; uniform float uAspect; uniform vec2 uSize; uniform float uRadius;',
     'uniform vec3 uLight; uniform vec3 uView;',
     'uniform float uTime; uniform float uAmbient; uniform float uPower;',
     'uniform vec3 uPaper; uniform vec3 uInk; uniform vec3 uLightCol;',
@@ -127,13 +132,14 @@
     '  float alpha = 1.0 - smoothstep(-0.75, 0.75, sd);',
     '  if (alpha <= 0.001) { fragColor = vec4(0.0); return; }',
     '  vec4 s = texture(uTex, vUv);',
-    '  float ink = s.r, gloss = s.g, wm = s.a;',
+    '  float ink = s.r, gloss = s.g, wm = s.b;',
+    '  float hgt = texture(uHeight, vUv).r;',
     '  vec2 pix = vUv / uTexel;',
     '  float inHot = step(uHot.x, vUv.x) * step(vUv.x, uHot.x + uHot.z) * step(uHot.y, vUv.y) * step(vUv.y, uHot.y + uHot.w) * uHotAmt;',
     '  ink = min(1.0, ink * (1.0 + 0.7 * inHot));',
     // relief: raised type bumps up, pressed type sinks; the normal comes from the height gradient
-    '  float hl = texture(uTex, vUv - vec2(uTexel.x, 0.0)).b, hr = texture(uTex, vUv + vec2(uTexel.x, 0.0)).b;',
-    '  float hu = texture(uTex, vUv - vec2(0.0, uTexel.y)).b, hd = texture(uTex, vUv + vec2(0.0, uTexel.y)).b;',
+    '  float hl = texture(uHeight, vUv - vec2(uTexel.x, 0.0)).r, hr = texture(uHeight, vUv + vec2(uTexel.x, 0.0)).r;',
+    '  float hu = texture(uHeight, vUv - vec2(0.0, uTexel.y)).r, hd = texture(uHeight, vUv + vec2(0.0, uTexel.y)).r;',
     '  vec2 dh = vec2(hr - hl, hd - hu);',
     // paper: fine grain plus a faint fibre direction; the lacquer is smooth
     '  float g1 = vnoise(pix * 0.6) - 0.5;',
@@ -153,7 +159,7 @@
     '  vec3 paper = uPaper * (1.0 + g1 * 0.035 + g2 * 0.02) * (1.0 - wm * 0.032);',
     '  vec3 inkCol = mix(uInk, vec3(0.018, 0.017, 0.016), gloss);',
     '  vec3 base = mix(paper, inkCol, ink);',
-    '  float pressed = max(0.5 - s.b, 0.0) * 2.0;',
+    '  float pressed = max(0.5 - hgt, 0.0) * 2.0;',
     '  float cavity = 1.0 - pressed * 0.14;',
     '  vec3 col = base * cavity * (uAmbient + ndl * att * uLightCol);',
     // specular: satin on the paper, a hard lacquer on the gloss ink, Schlick fresnel on both
@@ -289,14 +295,12 @@
       }
     }
   }
-  // Relief -> B channel, centred on 0.5. `depth` is a second canvas: R is how far raised
-  // (gloss type), G how far pressed (plain ink). Three box passes approximate a gaussian;
-  // pressed type gets a narrower bevel than raised. The watermark was drawn into B of
-  // the main canvas beforehand, so it is moved to A first.
-  function heightMap(data, depth, w, h, rUp, rDown) {
-    var n = w * h, up = new Float32Array(n), down = new Float32Array(n), tmp = new Float32Array(n), i, v;
+  // Relief, one byte per pixel centred on 0.5. `depth` is the depth canvas: R is how far
+  // raised (gloss type), G how far pressed (plain ink). Three box passes approximate a
+  // gaussian; pressed type gets a narrower bevel than raised.
+  function heightMap(depth, w, h, rUp, rDown) {
+    var n = w * h, up = new Float32Array(n), down = new Float32Array(n), tmp = new Float32Array(n), out = new Uint8Array(n), i, v;
     for (i = 0; i < n; i++) {
-      data[i * 4 + 3] = data[i * 4 + 2];
       up[i] = depth[i * 4] / 255;
       down[i] = depth[i * 4 + 1] / 255;
     }
@@ -304,8 +308,9 @@
     for (i = 0; i < 3; i++) { boxBlurH(down, tmp, w, h, rDown); boxBlurV(tmp, down, w, h, rDown); }
     for (i = 0; i < n; i++) {
       v = 0.5 + 0.5 * (up[i] - down[i]);
-      data[i * 4 + 2] = Math.max(0, Math.min(255, (v * 255 + 0.5) | 0));
+      out[i] = Math.max(0, Math.min(255, (v * 255 + 0.5) | 0));
     }
+    return out;
   }
 
   // Draw one run of text the way the DOM laid it out: from the left edge of its box,
@@ -327,43 +332,56 @@
     this.canvas = el.querySelector('canvas.paper');
     this.pass = new Pass(this.canvas, FACE_FS, true);
     var gl = this.pass.gl;
-    this.tex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, this.tex);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    function tex() {
+      var t = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      return t;
+    }
+    this.tex = tex();   // ink, at SCALE
+    this.htex = tex();  // relief, at DPR
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+    // The ink canvas is uploaded straight to the GPU; only the depth canvas is read back.
     this.off = document.createElement('canvas');
-    this.octx = this.off.getContext('2d', { willReadFrequently: true });
+    this.octx = this.off.getContext('2d');
     this.dep = document.createElement('canvas');
     this.dctx = this.dep.getContext('2d', { willReadFrequently: true });
-    this.w = 0; this.h = 0;
+    this.w = 0; this.h = 0;    // ink / canvas size
+    this.hw = 0; this.hh = 0;  // relief size
   }
   Face.prototype.resize = function (W, H) {
-    this.w = Math.max(2, Math.round(W * DPR));
-    this.h = Math.max(2, Math.round(H * DPR));
-    this.canvas.width = this.off.width = this.dep.width = this.w;
-    this.canvas.height = this.off.height = this.dep.height = this.h;
+    this.w = Math.max(2, Math.round(W * SCALE));
+    this.h = Math.max(2, Math.round(H * SCALE));
+    this.hw = Math.max(2, Math.round(W * DPR));
+    this.hh = Math.max(2, Math.round(H * DPR));
+    this.canvas.width = this.off.width = this.w;
+    this.canvas.height = this.off.height = this.h;
+    this.dep.width = this.hw;
+    this.dep.height = this.hh;
     this.paint();
   };
   // Draw the DOM's type onto the offscreen canvas, at the DOM's own positions.
   Face.prototype.paint = function () {
-    var ctx = this.octx, dctx = this.dctx, face = this.el, w = this.w, h = this.h;
+    var ctx = this.octx, dctx = this.dctx, face = this.el, w = this.w, h = this.h, hw = this.hw, hh = this.hh;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, w, h);
-    ctx.scale(DPR, DPR);
+    ctx.scale(SCALE, SCALE);
     ctx.textBaseline = 'middle';
     dctx.setTransform(1, 0, 0, 1, 0, 0);
     dctx.fillStyle = '#000';
-    dctx.fillRect(0, 0, w, h);
+    dctx.fillRect(0, 0, hw, hh);
     dctx.scale(DPR, DPR);
     dctx.textBaseline = 'middle';
     dctx.textAlign = 'left';
-    // the watermark, into B for now (heightMap moves it to A)
+    // the watermark, into B
     var wmText = face.getAttribute('data-watermark');
     if (wmText) {
-      var cw = w / DPR, ch = h / DPR;
+      var cw = w / SCALE, ch = h / SCALE;
       ctx.textAlign = 'center';
       ctx.font = 'normal 500 ' + Math.round(Math.min(cw, ch) * 0.62) + 'px ' + getComputedStyle(face).fontFamily;
       ctx.fillStyle = 'rgb(0,0,255)';
@@ -404,12 +422,13 @@
         dctx.fillRect(x0, ty, tw, th);
       }
     }
-    var img = ctx.getImageData(0, 0, w, h);
-    var dep = dctx.getImageData(0, 0, w, h);
-    heightMap(img.data, dep.data, w, h, Math.max(1, Math.round(1.6 * DPR)), Math.max(1, Math.round(1.0 * DPR)));
+    var dep = dctx.getImageData(0, 0, hw, hh);
+    var hgt = heightMap(dep.data, hw, hh, Math.max(1, Math.round(1.1 * DPR)), Math.max(1, Math.round(1.0 * DPR)));
     var gl = this.pass.gl;
     gl.bindTexture(gl.TEXTURE_2D, this.tex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, img.data);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.off);
+    gl.bindTexture(gl.TEXTURE_2D, this.htex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, hw, hh, 0, gl.RED, gl.UNSIGNED_BYTE, hgt);
     if (S.hot.el && S.hot.face === this) setHot(S.hot.el, this);
   };
   Face.prototype.render = function (light, view, T, time) {
@@ -418,9 +437,12 @@
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.tex);
     gl.uniform1i(p.u('uTex'), 0);
-    p.set('uTexel', [1 / this.w, 1 / this.h]);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this.htex);
+    gl.uniform1i(p.u('uHeight'), 1);
+    p.set('uTexel', [1 / this.hw, 1 / this.hh]);
     p.set('uAspect', this.h / this.w);
-    p.set('uSize', [S.W, S.H]);
+    p.set('uSize', [S.W * DPR, S.H * DPR]);
     p.set('uRadius', 0.0);
     p.set('uLight', light);
     p.set('uView', view);
