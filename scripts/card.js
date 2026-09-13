@@ -17,7 +17,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 4;
+  var VERSION = 5;
   var html = document.documentElement;
   var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var hoverable = matchMedia('(hover: hover)').matches;
@@ -880,7 +880,25 @@
   /* boot                                                                */
   /* ------------------------------------------------------------------ */
 
+  // A project row that would run past the card's text area is set a touch smaller instead.
+  function fitRows() {
+    var rows = card.querySelectorAll('.projects li');
+    for (var i = 0; i < rows.length; i++) {
+      var li = rows[i];
+      li.style.fontSize = '';
+      var first = li.firstElementChild, last = li.lastElementChild;
+      var avail = li.parentElement.offsetWidth;
+      // glyph widths do not scale quite linearly at small sizes, so take a second look
+      for (var pass = 0; pass < 3; pass++) {
+        var w = last.offsetLeft + last.offsetWidth - first.offsetLeft;
+        if (w <= avail + 0.5) break;
+        li.style.fontSize = (parseFloat(getComputedStyle(li).fontSize) * avail / w * 0.985).toFixed(2) + 'px';
+      }
+    }
+  }
+
   function layout() {
+    fitRows();
     measure();
     if (faces) {
       faces.front.resize(S.W, S.H);
