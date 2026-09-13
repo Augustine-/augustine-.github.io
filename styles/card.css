@@ -41,7 +41,7 @@
     --card-h: calc(var(--card-w) / var(--card-ratio));
     --r: 0px;                                    /* corner radius: a real card is cut square */
     --thick: 2px;                                /* card stock */
-    --fs: 1cqw;                                  /* type scale, relative to the face */
+    --fs: 1.15cqw;                               /* type scale, relative to the face */
 }
 
 :root[data-theme="light"] {
@@ -374,7 +374,7 @@ html:not(.gl) .gloss-rule { border-bottom: 1px solid var(--ink); }
     :root {
         --card-w: min(84vw, 380px, calc((100svh - 9rem) * 0.5714));
         --card-ratio: 0.5714;
-        --fs: 1.6cqw;
+        --fs: 1.84cqw;
     }
     .name { --track: 0.16em; font-size: calc(var(--fs) * 5.0); line-height: 1.08; }
     .name span { display: block; }

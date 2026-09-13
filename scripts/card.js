@@ -17,6 +17,7 @@
 (function () {
   'use strict';
 
+  var VERSION = 3;
   var html = document.documentElement;
   var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var hoverable = matchMedia('(hover: hover)').matches;
@@ -900,6 +901,7 @@
       html.classList.remove('gl');
     }
 
+    console.log('augustine.io card v' + VERSION + ' \u2014 ' + (S.gl ? 'webgl' : 'plain paper') + ', dpr ' + RAW_DPR + ', ink at ' + SCALE + 'x');
     hint.textContent = hoverable ? 'drag to flip' : 'swipe to flip';
     applyFaceTransforms();
     layout();
