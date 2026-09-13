@@ -261,11 +261,11 @@ html:not(.gl) .gloss-rule { border-bottom: 1px solid var(--ink); }
 }
 .cta {
     --track: 0.26em;
-    font-size: calc(var(--fs) * 2.6);
+    font-size: calc(var(--fs) * 2.86);
     font-weight: 500;
 }
 .links-toggle {
-    font-size: calc(var(--fs) * 2.2);
+    font-size: calc(var(--fs) * 2.42);
     font-style: italic;
 }
 .contacts {
@@ -275,7 +275,7 @@ html:not(.gl) .gloss-rule { border-bottom: 1px solid var(--ink); }
     align-items: baseline;
     gap: 0.3em 0.9em;
     margin-top: calc(var(--fs) * 1.6);
-    font-size: calc(var(--fs) * 2.2);
+    font-size: calc(var(--fs) * 2.42);
     letter-spacing: 0.03em;
 }
 .contacts .fold { display: none; }             /* a line break, used on the portrait card */
@@ -284,7 +284,7 @@ html:not(.gl) .gloss-rule { border-bottom: 1px solid var(--ink); }
 .note {
     margin: calc(var(--fs) * 0.9) 0 0;
     min-height: 1.4em;
-    font-size: calc(var(--fs) * 2.0);
+    font-size: calc(var(--fs) * 2.2);
     font-style: italic;
 }
 
@@ -292,7 +292,7 @@ html:not(.gl) .gloss-rule { border-bottom: 1px solid var(--ink); }
 .heading {
     --track: 0.26em;
     margin: 0 0 calc(var(--fs) * 3.2);
-    font-size: calc(var(--fs) * 3.2);
+    font-size: calc(var(--fs) * 3.52);
     font-weight: 500;
 }
 .projects {
@@ -308,7 +308,7 @@ html:not(.gl) .gloss-rule { border-bottom: 1px solid var(--ink); }
     justify-content: center;
     align-items: baseline;
     gap: 0.5em;
-    font-size: calc(var(--fs) * 2.6);
+    font-size: calc(var(--fs) * 2.86);
 }
 .projects a { font-weight: 500; padding: 0 0.1em; }
 .blurb { font-style: italic; color: var(--ink-muted); }
@@ -319,7 +319,7 @@ html:not(.gl) .gloss-rule { border-bottom: 1px solid var(--ink); }
     justify-content: center;
     align-items: baseline;
     gap: 0.4em;
-    font-size: calc(var(--fs) * 2.4);
+    font-size: calc(var(--fs) * 2.64);
 }
 .flip-back i { font-style: italic; }
 .flip-back button { font-weight: 500; padding: 0 0.2em; }
@@ -380,12 +380,13 @@ html:not(.gl) .gloss-rule { border-bottom: 1px solid var(--ink); }
     .name span { display: block; }
     .tagline { --track: 0.3em; margin-top: calc(var(--fs) * 1.6); }
     .actions { margin-top: calc(var(--fs) * 6); }
-    .contacts { gap: 0.1em 0.8em; margin-top: calc(var(--fs) * 2); font-size: calc(var(--fs) * 2.4); }
+    .contacts { gap: 0.1em 0.8em; margin-top: calc(var(--fs) * 2); font-size: calc(var(--fs) * 2.64); }
     .contacts .fold { display: block; flex-basis: 100%; height: 0; }
     .contacts .sep-fold { display: none; }
     .heading { margin-bottom: calc(var(--fs) * 4); }
     .projects { gap: calc(var(--fs) * 1.8); }
-    .projects li { font-size: calc(var(--fs) * 2.4); gap: 0.4em; }
+    .projects { margin-inline: calc(var(--fs) * -1.5); }  /* the longest row needs a little of the margin */
+    .projects li { font-size: calc(var(--fs) * 2.52); gap: 0.4em; }
     .flip-back { margin-top: calc(var(--fs) * 5); }
 }
 
