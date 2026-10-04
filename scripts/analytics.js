@@ -3,7 +3,7 @@
  *
  * Loaded on every page. Gives us:
  *   - pageviews per page / subpath (automatic)
- *   - outbound link clicks: github, linkedin, twitter, email (autocapture)
+ *   - outbound link clicks: github, linkedin, blog, email (autocapture)
  *
  * Plus a custom `mondolla_setting_changed` event for the mondolla controls.
  * The settings listeners are global but no-op on pages without the lil-gui
