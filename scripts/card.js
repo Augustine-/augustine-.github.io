@@ -17,7 +17,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 6;
+  var VERSION = 7;
   var html = document.documentElement;
   var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var hoverable = matchMedia('(hover: hover)').matches;
