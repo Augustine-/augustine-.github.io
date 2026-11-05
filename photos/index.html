@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Progress photos that don't lie · augustine.io</title>
+    <meta name="description" content="The setup and routine I use so my progress photos only show what changed. Free, by email.">
+    <meta name="theme-color" content="#0a0a0b">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2214%22>A</text></svg>">
+    <!-- Same room as the card: dark unless the visitor chose light there. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('augustine-io-theme');
+          document.documentElement.setAttribute('data-theme', stored === 'light' ? 'light' : 'dark');
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="/styles/page.css?v=2">
+    <script src="/scripts/signup.js?v=1" defer></script>
+    <script src="/scripts/analytics.js" defer></script>
+</head>
+<body>
+<main>
+    <a class="home" href="/">← augustine.io</a>
+
+    <!-- DRAFT: the title and teaser are placeholders from docs/write-ups/photos.md; Augustine rewrites them in his voice. -->
+    <h1>Progress photos that don't lie</h1>
+    <p class="lede">Most progress photos measure the lighting, the pump and your last meal more than your body. This is the setup and routine I use so mine only show what changed.</p>
+
+    <!-- ph-no-capture: PostHog's autocapture leaves this form alone. Without JS it posts straight to the API. -->
+    <form class="signup ph-no-capture" id="signup" action="https://list.augustine.io/api/subscribe" method="post">
+        <input type="hidden" name="keyword" value="photos">
+        <input type="hidden" name="source" value="page">
+        <div class="hp" aria-hidden="true">
+            <label>Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+        </div>
+        <div class="row">
+            <label class="field">
+                <span class="visually-hidden">Email address</span>
+                <input type="email" name="email" required autocomplete="email" inputmode="email" placeholder="you@example.com">
+            </label>
+            <button type="submit">Send me the guide</button>
+        </div>
+        <p class="status" role="status" aria-live="polite"></p>
+        <p class="consent">I'll email you the link. Now and then I'll also send news about new guides and the progress-photo app I'm building. Unsubscribe anytime. <a href="/privacy/">Privacy</a></p>
+    </form>
+
+    <div class="done" id="done" hidden>
+        <p>Check your inbox.</p>
+        <!-- The subject must match the keyword's title in mail/keywords.js ("Here's the <title> write-up"). -->
+        <p>It's from Augustine (yo@augustine.io), subject “Here's the progress photo write-up”. Open the link in it to get the guide. Not there in a minute? Look in Promotions or spam.</p>
+        <p>While you wait, follow <a href="https://www.instagram.com/cryptologic/">@cryptologic</a> for the next one.</p>
+    </div>
+
+    <footer>augustine.io · <a href="/privacy/">Privacy</a> · <a href="mailto:yo@augustine.io">yo@augustine.io</a></footer>
+</main>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('signup');
+    window.augustineSignup.wire(form, {
+      path: '/api/subscribe',
+      body: function (f) {
+        return { email: f.email.value.trim(), keyword: 'photos', source: 'page', website: f.website.value };
+      },
+      done: function () {
+        form.hidden = true;
+        var done = document.getElementById('done');
+        done.hidden = false;
+        done.setAttribute('tabindex', '-1');
+        done.focus();
+      }
+    });
+  });
+</script>
+</body>
+</html>

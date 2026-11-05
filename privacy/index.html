@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Privacy · augustine.io</title>
+    <meta name="description" content="What happens to your information on augustine.io, my email list and my Instagram bot.">
+    <meta name="theme-color" content="#0a0a0b">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2214%22>A</text></svg>">
+    <!-- Same room as the card: dark unless the visitor chose light there. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('augustine-io-theme');
+          document.documentElement.setAttribute('data-theme', stored === 'light' ? 'light' : 'dark');
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="/styles/page.css?v=2">
+    <script src="/scripts/analytics.js" defer></script>
+</head>
+<body>
+<main>
+    <a class="home" href="/">← augustine.io</a>
+    <h1>Privacy</h1>
+    <p class="dated">Last updated October 29, 2026</p>
+
+    <p>augustine.io is my personal site. This page covers what happens to your information when you visit it, sign up for one of my free guides, or comment on one of my Instagram posts. Questions or requests go to <a href="mailto:yo@augustine.io">yo@augustine.io</a>.</p>
+
+    <h2>Visiting the site</h2>
+    <p>I use PostHog to count page views and link clicks. It stores an identifier in your browser so it can tell visits apart. It never gets your name or your email address. The site also remembers whether you chose the light or dark look, in your browser only.</p>
+
+    <h2>Signing up for a guide</h2>
+    <p>When you enter your email address to get a guide, I store:</p>
+    <ul>
+        <li>your email address</li>
+        <li>which guides you asked for</li>
+        <li>when you signed up, confirmed, were last emailed, or unsubscribed</li>
+        <li>whether you came through an Instagram DM or this site</li>
+        <li>whether you asked for a founding spot in one of my apps</li>
+    </ul>
+    <p>That's all: no name, no location.</p>
+    <p>I email you a link to the guide, and opening it confirms your address. Once you've confirmed, I may also email you now and then about new guides and the apps I make. If you never confirm, you only get the email you asked for.</p>
+    <p>To stop the form from being used to flood someone's inbox, the signup service keeps a scrambled (one-way hashed) version of your IP address for up to a day. It never stores the address itself.</p>
+
+    <h2>Commenting on Instagram</h2>
+    <p>If you comment a keyword on one of my posts, my bot reads the comment and sends you one direct message. If you reply with your email address, it signs you up just as the form on this site would. It remembers that comment and your Instagram account ID, so it never messages you twice.</p>
+
+    <h2>Who handles it</h2>
+    <ul>
+        <li>Amazon Web Services sends the email.</li>
+        <li>Vercel runs the signup service, and Neon stores the list.</li>
+        <li>GitHub Pages hosts this site, and PostHog counts visits.</li>
+        <li>Meta runs Instagram.</li>
+    </ul>
+    <p>They handle your information only to provide those services. I never sell, rent or share it with anyone else, and I don't use it for ads.</p>
+
+    <h2>Your choices</h2>
+    <ul>
+        <li>Every email has an unsubscribe link. One click and you're off the list.</li>
+        <li>To have your information deleted, email <a href="mailto:yo@augustine.io">yo@augustine.io</a>.</li>
+        <li>If an address bounces or reports my email as spam, I keep just enough to make sure I never email it again.</li>
+    </ul>
+
+    <h2>Children</h2>
+    <p>My guides aren't meant for children under 13, and I don't knowingly collect their information.</p>
+
+    <h2>Changes</h2>
+    <p>If anything here changes, I'll update this page and the date at the top.</p>
+
+    <footer>augustine.io · <a href="mailto:yo@augustine.io">yo@augustine.io</a></footer>
+</main>
+</body>
+</html>
