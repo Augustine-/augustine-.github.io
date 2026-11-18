@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Pay for it forever · augustine.io</title>
+    <meta name="description" content="How much would you need in Treasury bills for the interest alone to pay for Netflix, Spotify or any subscription? Before tax, after tax, and forever.">
+    <meta property="og:title" content="Pay for it forever">
+    <meta property="og:description" content="How much would you need in Treasury bills for the interest alone to pay for a subscription?">
+    <meta name="theme-color" content="#0a0a0b">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2214%22>A</text></svg>">
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('augustine-io-theme');
+          document.documentElement.setAttribute('data-theme', stored === 'light' ? 'light' : 'dark');
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="/styles/page.css?v=2">
+    <style>
+        .presets { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1.5rem; padding: 0; list-style: none; }
+        .presets li { margin: 0; }
+        .presets button {
+            min-height: 44px;
+            padding: 0.35rem 0.85rem;
+            font: 400 1.05rem var(--serif);
+            color: var(--fg);
+            background: transparent;
+            border: 1px solid var(--rule);
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .presets button:hover { border-color: var(--muted); }
+        .presets button[aria-pressed="true"] { color: var(--bg); background: var(--fg); border-color: var(--fg); }
+        .presets button:focus-visible, .inputs input:focus-visible, .inputs select:focus-visible {
+            outline: 2px solid var(--focus); outline-offset: 2px;
+        }
+
+        .inputs { display: grid; grid-template-columns: 1fr; gap: 1rem 1.25rem; margin: 0 0 2.25rem; }
+        @media (min-width: 34rem) { .inputs { grid-template-columns: 1fr 1fr; } }
+        .inputs label { display: block; }
+        .inputs .name { display: block; font-size: 1.05rem; margin-bottom: 0.3rem; }
+        .inputs .unit { position: relative; display: block; }
+        .inputs .unit::before, .inputs .unit::after {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            color: var(--muted); font-size: 1.15rem; pointer-events: none;
+        }
+        .inputs .unit.dollars::before { content: "$"; left: 0.75rem; }
+        .inputs .unit.dollars input { padding-left: 1.6rem; }
+        .inputs .unit.percent::after { content: "%"; right: 0.75rem; }
+        .inputs .unit.percent input { padding-right: 2rem; }
+        .inputs input, .inputs select {
+            width: 100%;
+            min-height: 48px;
+            padding: 0.5rem 0.75rem;
+            font: 400 1.15rem var(--serif);
+            font-variant-numeric: lining-nums tabular-nums;
+            color: var(--fg);
+            background: var(--bg);
+            border: 1px solid var(--muted);
+            border-radius: 6px;
+        }
+        .inputs .hint { display: block; color: var(--muted); font-size: 1rem; line-height: 1.35; margin-top: 0.3rem; }
+
+        .results { margin: 0 0 2rem; padding: 0; list-style: none; border-top: 1px solid var(--rule); }
+        .results li { margin: 0; padding: 1.1rem 0 1rem; border-bottom: 1px solid var(--rule); }
+        .results .label { display: block; font-size: 1.05rem; color: var(--muted); }
+        .results .amount {
+            display: block;
+            font-size: 2.6rem; line-height: 1.15; font-weight: 500;
+            font-variant-numeric: lining-nums tabular-nums;
+            overflow-wrap: anywhere;
+        }
+        .results .amount.never { font-style: italic; }
+        .results .note { display: block; font-size: 1.05rem; line-height: 1.4; margin-top: 0.2rem; }
+
+        details { margin: 0 0 1rem; }
+        summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+        summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+        .math p { font-size: 1.1rem; }
+    </style>
+    <script src="/scripts/analytics.js" defer></script>
+</head>
+<body>
+<main>
+    <a class="home" href="/toys/">← toys</a>
+
+    <h1>Pay for it forever</h1>
+    <p class="lede">How much would you need in Treasury bills for the interest alone to pay for a subscription?</p>
+
+    <ul class="presets" aria-label="Subscriptions">
+        <li><button type="button" data-preset="netflix">Netflix</button></li>
+        <li><button type="button" data-preset="spotify">Spotify</button></li>
+        <li><button type="button" data-preset="youtube">YouTube Premium</button></li>
+        <li><button type="button" data-preset="chatgpt">ChatGPT Plus</button></li>
+        <li><button type="button" data-preset="claude">Claude Max</button></li>
+    </ul>
+
+    <form class="inputs" id="inputs" onsubmit="return false">
+        <label>
+            <span class="name">Price per month</span>
+            <span class="unit dollars"><input id="price" type="number" inputmode="decimal" min="0" step="0.01" value="19.99"></span>
+            <span class="hint" id="price-hint">US list price, November 2026. Change it to yours.</span>
+        </label>
+        <label>
+            <span class="name">Treasury bill yield</span>
+            <span class="unit percent"><input id="yield" type="number" inputmode="decimal" min="0" step="0.05" value="4.2"></span>
+            <span class="hint">The 3-month bill paid about 4.2% in November 2026.</span>
+        </label>
+        <label>
+            <span class="name">Your federal tax bracket</span>
+            <select id="tax">
+                <option value="0">0% (or in an IRA)</option>
+                <option value="10">10%</option>
+                <option value="12">12%</option>
+                <option value="22" selected>22%</option>
+                <option value="24">24%</option>
+                <option value="32">32%</option>
+                <option value="35">35%</option>
+                <option value="37">37%</option>
+            </select>
+            <span class="hint">States don't tax Treasury interest.</span>
+        </label>
+        <label>
+            <span class="name">The price goes up each year by</span>
+            <span class="unit percent"><input id="growth" type="number" inputmode="decimal" step="0.1" value="6.9"></span>
+            <span class="hint" id="growth-hint"></span>
+        </label>
+    </form>
+
+    <ul class="results" aria-live="polite">
+        <li>
+            <span class="label">To pay today's price, before tax</span>
+            <span class="amount" id="r-today"></span>
+            <span class="note" id="n-today"></span>
+        </li>
+        <li>
+            <span class="label">After federal tax</span>
+            <span class="amount" id="r-taxed"></span>
+            <span class="note" id="n-taxed"></span>
+        </li>
+        <li>
+            <span class="label">Forever, as the price keeps rising</span>
+            <span class="amount" id="r-forever"></span>
+            <span class="note" id="n-forever"></span>
+        </li>
+    </ul>
+
+    <details class="math">
+        <summary>The math</summary>
+        <p>A year of the subscription costs twelve times the monthly price. Divide that by the yield and you have the balance whose interest pays for one year at today's price.</p>
+        <p>Tax takes a share of the interest, so after tax you divide by the yield times one minus your bracket instead.</p>
+        <p>If the price rises every year, the interest has to rise with it, so part of each year's interest must stay invested. The balance you need is the yearly cost divided by the after-tax yield minus the yearly price increase. When the price rises as fast as the interest or faster, that difference is zero or below, and no balance is ever enough.</p>
+    </details>
+
+    <footer>augustine.io · <a href="/toys/">toys</a> · <a href="mailto:yo@augustine.io">yo@augustine.io</a></footer>
+</main>
+<script>
+(function () {
+    // US list prices as of November 2026. Netflix Standard went from $8.99
+    // (2014) to $19.99 (March 2026): about 6.9% a year.
+    var PRESETS = {
+        netflix: { price: 19.99, growth: 6.9, hint: 'Netflix Standard was $8.99 in 2014 and $19.99 in 2026: about 6.9% a year.' },
+        spotify: { price: 12.99, growth: 3, hint: 'About inflation. Spotify Premium was $9.99 from 2011 to 2023 and $12.99 by 2026.' },
+        youtube: { price: 15.99, growth: 3, hint: 'About inflation. Change it if you expect faster increases.' },
+        chatgpt: { price: 20, growth: 3, hint: 'About inflation. Change it if you expect faster increases.' },
+        claude:  { price: 200, growth: 3, hint: 'About inflation. Change it if you expect faster increases.' }
+    };
+    var DEFAULT_HINT = 'About inflation is 3%. Change it if you expect faster increases.';
+
+    var $ = function (id) { return document.getElementById(id); };
+    var price = $('price'), yld = $('yield'), tax = $('tax'), growth = $('growth');
+    var buttons = document.querySelectorAll('.presets button');
+    var current = 'netflix';
+    var touched = false; // leave the address alone until the visitor changes something
+
+    var money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    var pct = function (x) { return (Math.round(x * 100) / 100).toLocaleString('en-US') + '%'; };
+    var num = function (el) { var v = parseFloat(el.value); return isFinite(v) ? v : NaN; };
+
+    function setPreset(name) {
+        current = name;
+        buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.preset === name)); });
+        $('growth-hint').textContent = name && PRESETS[name] ? PRESETS[name].hint : DEFAULT_HINT;
+    }
+
+    function apply(name) {
+        var p = PRESETS[name];
+        price.value = p.price;
+        growth.value = p.growth;
+        setPreset(name);
+        render();
+    }
+
+    function show(id, text, never) {
+        var el = $(id);
+        el.textContent = text;
+        el.classList.toggle('never', !!never);
+    }
+
+    function render() {
+        var m = num(price), y = num(yld) / 100, t = parseFloat(tax.value) / 100, g = num(growth) / 100;
+        var yearly = m * 12;
+        if (!(m >= 0) || !(y >= 0) || !isFinite(g)) {
+            ['r-today', 'r-taxed', 'r-forever'].forEach(function (id) { show(id, '—'); });
+            ['n-today', 'n-taxed', 'n-forever'].forEach(function (id) { $(id).textContent = ''; });
+            return;
+        }
+        var after = y * (1 - t);
+
+        if (y > 0) {
+            var today = yearly / y;
+            show('r-today', money.format(today));
+            $('n-today').textContent = money.format(yearly) + ' a year at ' + pct(y * 100) + '. That would also buy ' +
+                (today / yearly).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' years of it up front.';
+        } else {
+            show('r-today', 'No amount of money', true);
+            $('n-today').textContent = 'At 0% the balance earns nothing.';
+        }
+
+        if (after > 0) {
+            show('r-taxed', money.format(yearly / after));
+            $('n-taxed').textContent = t > 0
+                ? 'At ' + pct(t * 100) + ' tax, ' + pct(y * 100) + ' pays you ' + pct(after * 100) + '.'
+                : 'With no tax you keep all ' + pct(y * 100) + '.';
+        } else {
+            show('r-taxed', 'No amount of money', true);
+            $('n-taxed').textContent = 'After tax the balance earns nothing.';
+        }
+
+        var spread = after - g;
+        if (spread > 0.00005) {
+            show('r-forever', money.format(yearly / spread));
+            $('n-forever').textContent = 'With the price rising ' + pct(g * 100) + ' a year, only ' + pct(spread * 100) +
+                ' of the ' + pct(after * 100) + ' is yours to spend. The rest has to stay invested to keep up.';
+        } else {
+            show('r-forever', 'No amount of money', true);
+            $('n-forever').textContent = 'The price rises ' + pct(g * 100) + ' a year and the bills pay ' + pct(after * 100) +
+                ' after tax. The interest falls further behind every year, however much you hold.';
+        }
+
+        if (touched) save();
+    }
+
+    // Keep the settings in the address so a link shows the same numbers.
+    function save() {
+        var q = new URLSearchParams();
+        if (current) q.set('s', current);
+        q.set('price', price.value);
+        q.set('yield', yld.value);
+        q.set('tax', tax.value);
+        q.set('growth', growth.value);
+        try { history.replaceState(null, '', '?' + q.toString()); } catch (e) {}
+    }
+
+    function load() {
+        var q = new URLSearchParams(location.search);
+        var s = q.get('s');
+        if (s && PRESETS[s]) apply(s); else setPreset(s === '' ? null : current);
+        if (q.has('price')) price.value = q.get('price');
+        if (q.has('yield')) yld.value = q.get('yield');
+        if (q.has('tax') && tax.querySelector('option[value="' + CSS.escape(q.get('tax')) + '"]')) tax.value = q.get('tax');
+        if (q.has('growth')) growth.value = q.get('growth');
+        if (q.has('price') || q.has('growth')) {
+            var p = PRESETS[current];
+            if (!p || parseFloat(price.value) !== p.price) setPreset(null);
+        }
+    }
+
+    load();
+    render();
+    touched = true;
+
+    buttons.forEach(function (b) { b.addEventListener('click', function () { apply(b.dataset.preset); }); });
+    price.addEventListener('input', function () { setPreset(null); render(); });
+    [yld, growth].forEach(function (el) { el.addEventListener('input', render); });
+    tax.addEventListener('change', render);
+})();
+</script>
+</body>
+</html>

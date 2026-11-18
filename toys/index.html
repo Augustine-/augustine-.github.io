@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Toys · augustine.io</title>
+    <meta name="description" content="Small things I made for fun.">
+    <meta name="theme-color" content="#0a0a0b">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2214%22>A</text></svg>">
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('augustine-io-theme');
+          document.documentElement.setAttribute('data-theme', stored === 'light' ? 'light' : 'dark');
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="/styles/page.css?v=2">
+    <style>
+        .toys { list-style: none; padding: 0; margin: 1.5rem 0 0; }
+        .toys li { margin: 0; padding: 1rem 0; border-top: 1px solid var(--rule); }
+        .toys li:last-child { border-bottom: 1px solid var(--rule); }
+        .toys a { font-size: 1.45rem; font-weight: 500; }
+        .toys p { margin: 0.2rem 0 0; color: var(--muted); font-size: 1.1rem; }
+    </style>
+    <script src="/scripts/analytics.js" defer></script>
+</head>
+<body>
+<main>
+    <a class="home" href="/">← augustine.io</a>
+
+    <h1>Toys</h1>
+
+    <ul class="toys">
+        <li>
+            <a href="/toys/forever/">Pay for it forever</a>
+            <p>How much you'd need in Treasury bills for the interest to pay for a subscription.</p>
+        </li>
+        <li>
+            <a href="/mondolla/">mondolla</a>
+            <p>A 3D mandala that visualizes crypto pairs.</p>
+        </li>
+    </ul>
+
+    <footer>augustine.io · <a href="mailto:yo@augustine.io">yo@augustine.io</a></footer>
+</main>
+</body>
+</html>
