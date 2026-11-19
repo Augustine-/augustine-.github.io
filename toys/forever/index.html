@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Pay for it forever · augustine.io</title>
-    <meta name="description" content="How much would you need in Treasury bills for the interest alone to pay for Netflix, Spotify or any subscription? Before tax, after tax, and forever.">
+    <meta name="description" content="How much would you need in Treasuries for the interest alone to pay for Netflix, Spotify or any subscription? Before tax, after tax, and forever.">
     <meta property="og:title" content="Pay for it forever">
-    <meta property="og:description" content="How much would you need in Treasury bills for the interest alone to pay for a subscription?">
+    <meta property="og:description" content="How much would you need in Treasuries for the interest alone to pay for a subscription?">
     <meta name="theme-color" content="#0a0a0b">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2214%22>A</text></svg>">
     <script>
@@ -41,7 +41,8 @@
 
         .inputs { display: grid; grid-template-columns: 1fr; gap: 1rem 1.25rem; margin: 0 0 2.25rem; }
         @media (min-width: 34rem) { .inputs { grid-template-columns: 1fr 1fr; } }
-        .inputs label { display: block; }
+        .inputs label, .inputs .field { display: block; }
+        .inputs select + .unit { margin-top: 0.5rem; }
         .inputs .name { display: block; font-size: 1.05rem; margin-bottom: 0.3rem; }
         .inputs .unit { position: relative; display: block; }
         .inputs .unit::before, .inputs .unit::after {
@@ -89,7 +90,7 @@
     <a class="home" href="/toys/">← toys</a>
 
     <h1>Pay for it forever</h1>
-    <p class="lede">How much would you need in Treasury bills for the interest alone to pay for a subscription?</p>
+    <p class="lede">How much would you need in Treasuries for the interest alone to pay for a subscription?</p>
 
     <ul class="presets" aria-label="Subscriptions">
         <li><button type="button" data-preset="netflix">Netflix</button></li>
@@ -97,6 +98,7 @@
         <li><button type="button" data-preset="youtube">YouTube Premium</button></li>
         <li><button type="button" data-preset="chatgpt">ChatGPT Plus</button></li>
         <li><button type="button" data-preset="claude">Claude Max</button></li>
+        <li><button type="button" data-preset="wow">World of Warcraft</button></li>
     </ul>
 
     <form class="inputs" id="inputs" onsubmit="return false">
@@ -105,11 +107,18 @@
             <span class="unit dollars"><input id="price" type="number" inputmode="decimal" min="0" step="0.01" value="19.99"></span>
             <span class="hint" id="price-hint">US list price, November 2026. Change it to yours.</span>
         </label>
-        <label>
-            <span class="name">Treasury bill yield</span>
-            <span class="unit percent"><input id="yield" type="number" inputmode="decimal" min="0" step="0.05" value="4.2"></span>
-            <span class="hint">The 3-month bill paid about 4.2% in November 2026.</span>
-        </label>
+        <div class="field">
+            <label class="name" for="term">What you buy</label>
+            <select id="term">
+                <option value="3m">3-month bill · 4.34%</option>
+                <option value="1y">1-year bill · 4.62%</option>
+                <option value="10y">10-year note · 5.07%</option>
+                <option value="30y">30-year bond · 5.41%</option>
+                <option value="custom">Your own rate</option>
+            </select>
+            <span class="unit percent"><input id="yield" aria-label="Yield" type="number" inputmode="decimal" min="0" step="0.05" value="4.34"></span>
+            <span class="hint" id="yield-hint">The 3-month bill paid 4.34% on Nov 18, 2026. Its rate resets every three months.</span>
+        </div>
         <label>
             <span class="name">Your federal tax bracket</span>
             <select id="tax">
@@ -126,7 +135,7 @@
         </label>
         <label>
             <span class="name">The price goes up each year by</span>
-            <span class="unit percent"><input id="growth" type="number" inputmode="decimal" step="0.1" value="6.9"></span>
+            <span class="unit percent"><input id="growth" type="number" inputmode="decimal" step="0.1" value="0"></span>
             <span class="hint" id="growth-hint"></span>
         </label>
     </form>
@@ -142,8 +151,8 @@
             <span class="amount" id="r-taxed"></span>
             <span class="note" id="n-taxed"></span>
         </li>
-        <li>
-            <span class="label">Forever, as the price keeps rising</span>
+        <li id="forever-row" hidden>
+            <span class="label" id="l-forever"></span>
             <span class="amount" id="r-forever"></span>
             <span class="note" id="n-forever"></span>
         </li>
@@ -153,6 +162,8 @@
         <summary>The math</summary>
         <p>A year of the subscription costs twelve times the monthly price. Divide that by the yield and you have the balance whose interest pays for one year at today's price.</p>
         <p>Tax takes a share of the interest, so after tax you divide by the yield times one minus your bracket instead.</p>
+        <p>At a fixed price, the after-tax balance pays for it forever, as long as the rate holds. A bill's rate resets every few months. A 10-year note or a 30-year bond locks today's rate until it matures.</p>
+        <p>The rates are the Treasury's <a href="https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve&amp;field_tdr_date_value=2026">daily par yield curve</a>, read when the page opens.</p>
         <p>If the price rises every year, the interest has to rise with it, so part of each year's interest must stay invested. The balance you need is the yearly cost divided by the after-tax yield minus the yearly price increase. When the price rises as fast as the interest or faster, that difference is zero or below, and no balance is ever enough.</p>
     </details>
 
@@ -160,38 +171,68 @@
 </main>
 <script>
 (function () {
-    // US list prices as of November 2026. Netflix Standard went from $8.99
-    // (2014) to $19.99 (March 2026): about 6.9% a year.
+    // US list prices as of November 2026. Most subscriptions hold a price for
+    // years and then step up, so the default is no yearly increase.
+    var FLAT = 'Most subscriptions hold their price for years. World of Warcraft has been $14.99 since 2004.';
     var PRESETS = {
-        netflix: { price: 19.99, growth: 6.9, hint: 'Netflix Standard was $8.99 in 2014 and $19.99 in 2026: about 6.9% a year.' },
-        spotify: { price: 12.99, growth: 3, hint: 'About inflation. Spotify Premium was $9.99 from 2011 to 2023 and $12.99 by 2026.' },
-        youtube: { price: 15.99, growth: 3, hint: 'About inflation. Change it if you expect faster increases.' },
-        chatgpt: { price: 20, growth: 3, hint: 'About inflation. Change it if you expect faster increases.' },
-        claude:  { price: 200, growth: 3, hint: 'About inflation. Change it if you expect faster increases.' }
+        netflix: { price: 19.99, hint: 'Netflix Standard went from $8.99 in 2014 to $19.99 in 2026, about 6.9% a year. Try 6.9.' },
+        spotify: { price: 12.99, hint: 'Spotify Premium was $9.99 from 2011 to 2023, then $12.99 by 2026.' },
+        youtube: { price: 15.99, hint: FLAT },
+        chatgpt: { price: 20, hint: FLAT },
+        claude:  { price: 200, hint: FLAT },
+        wow:     { price: 14.99, hint: 'World of Warcraft has been $14.99 a month since 2004.' }
     };
-    var DEFAULT_HINT = 'About inflation is 3%. Change it if you expect faster increases.';
+
+    // What you can buy, by the Treasury CSV's column names.
+    var TERMS = {
+        '3m':  { col: '3 Mo',  label: '3-month bill', name: 'The 3-month bill', note: 'Its rate resets every three months.' },
+        '1y':  { col: '1 Yr',  label: '1-year bill',  name: 'The 1-year bill',  note: 'Its rate is locked for a year.' },
+        '10y': { col: '10 Yr', label: '10-year note', name: 'The 10-year note', note: 'Its rate is locked for 10 years.' },
+        '30y': { col: '30 Yr', label: '30-year bond', name: 'The 30-year bond', note: 'Its rate is locked for 30 years.' }
+    };
+    // The Treasury's par yields on Nov 18, 2026: used until the live read answers, or if it fails.
+    var rates = { date: new Date(2026, 10, 18), '3m': 4.34, '1y': 4.62, '10y': 5.07, '30y': 5.41 };
 
     var $ = function (id) { return document.getElementById(id); };
-    var price = $('price'), yld = $('yield'), tax = $('tax'), growth = $('growth');
+    var price = $('price'), term = $('term'), yld = $('yield'), tax = $('tax'), growth = $('growth');
     var buttons = document.querySelectorAll('.presets button');
     var current = 'netflix';
-    var touched = false; // leave the address alone until the visitor changes something
+    var touched = false; // the visitor has changed something: keep the address in step
 
     var money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
     var pct = function (x) { return (Math.round(x * 100) / 100).toLocaleString('en-US') + '%'; };
     var num = function (el) { var v = parseFloat(el.value); return isFinite(v) ? v : NaN; };
+    var day = function (d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
 
     function setPreset(name) {
         current = name;
         buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.preset === name)); });
-        $('growth-hint').textContent = name && PRESETS[name] ? PRESETS[name].hint : DEFAULT_HINT;
+        $('growth-hint').textContent = name && PRESETS[name] ? PRESETS[name].hint : FLAT;
     }
 
     function apply(name) {
-        var p = PRESETS[name];
-        price.value = p.price;
-        growth.value = p.growth;
+        price.value = PRESETS[name].price;
         setPreset(name);
+        render();
+    }
+
+    function labelTerms() {
+        Object.keys(TERMS).forEach(function (k) {
+            term.querySelector('option[value="' + k + '"]').textContent = TERMS[k].label + ' · ' + pct(rates[k]);
+        });
+    }
+
+    function hintYield() {
+        var k = term.value, t = TERMS[k];
+        $('yield-hint').textContent = t
+            ? t.name + ' paid ' + pct(rates[k]) + ' on ' + day(rates.date) + '. ' + t.note
+            : 'Any rate you like, such as your savings account\'s.';
+    }
+
+    function setTerm(k) {
+        term.value = k;
+        if (TERMS[k]) yld.value = rates[k];
+        hintYield();
         render();
     }
 
@@ -202,7 +243,8 @@
     }
 
     function render() {
-        var m = num(price), y = num(yld) / 100, t = parseFloat(tax.value) / 100, g = num(growth) / 100;
+        var m = num(price), y = num(yld) / 100, t = parseFloat(tax.value) / 100;
+        var g = growth.value.trim() === '' ? 0 : num(growth) / 100;
         var yearly = m * 12;
         if (!(m >= 0) || !(y >= 0) || !isFinite(g)) {
             ['r-today', 'r-taxed', 'r-forever'].forEach(function (id) { show(id, '—'); });
@@ -231,14 +273,17 @@
             $('n-taxed').textContent = 'After tax the balance earns nothing.';
         }
 
+        // With a flat price the after-tax line already pays for it forever.
         var spread = after - g;
-        if (spread > 0.00005) {
+        $('forever-row').hidden = g === 0;
+        $('l-forever').textContent = 'If the price ' + (g > 0 ? 'goes up ' : 'goes down ') + pct(Math.abs(g) * 100) + ' every year';
+        if (g !== 0 && spread > 0.00005) {
             show('r-forever', money.format(yearly / spread));
             $('n-forever').textContent = 'With the price rising ' + pct(g * 100) + ' a year, only ' + pct(spread * 100) +
                 ' of the ' + pct(after * 100) + ' is yours to spend. The rest has to stay invested to keep up.';
-        } else {
+        } else if (g !== 0) {
             show('r-forever', 'No amount of money', true);
-            $('n-forever').textContent = 'The price rises ' + pct(g * 100) + ' a year and the bills pay ' + pct(after * 100) +
+            $('n-forever').textContent = 'The price rises ' + pct(g * 100) + ' a year and the Treasury pays ' + pct(after * 100) +
                 ' after tax. The interest falls further behind every year, however much you hold.';
         }
 
@@ -250,7 +295,8 @@
         var q = new URLSearchParams();
         if (current) q.set('s', current);
         q.set('price', price.value);
-        q.set('yield', yld.value);
+        q.set('term', term.value);
+        if (!TERMS[term.value]) q.set('yield', yld.value); // a Treasury term always shows today's rate
         q.set('tax', tax.value);
         q.set('growth', growth.value);
         try { history.replaceState(null, '', '?' + q.toString()); } catch (e) {}
@@ -259,25 +305,95 @@
     function load() {
         var q = new URLSearchParams(location.search);
         var s = q.get('s');
-        if (s && PRESETS[s]) apply(s); else setPreset(s === '' ? null : current);
+        if (s && PRESETS[s]) apply(s); else setPreset(q.has('price') ? null : current);
         if (q.has('price')) price.value = q.get('price');
-        if (q.has('yield')) yld.value = q.get('yield');
+        if (q.has('term') && term.querySelector('option[value="' + CSS.escape(q.get('term')) + '"]')) term.value = q.get('term');
+        if (TERMS[term.value]) yld.value = rates[term.value];
+        else if (q.has('yield')) yld.value = q.get('yield');
         if (q.has('tax') && tax.querySelector('option[value="' + CSS.escape(q.get('tax')) + '"]')) tax.value = q.get('tax');
         if (q.has('growth')) growth.value = q.get('growth');
-        if (q.has('price') || q.has('growth')) {
-            var p = PRESETS[current];
-            if (!p || parseFloat(price.value) !== p.price) setPreset(null);
-        }
+        if (q.has('price') && current && parseFloat(price.value) !== PRESETS[current].price) setPreset(null);
+        hintYield();
     }
 
-    load();
-    render();
-    touched = true;
+    // Today's rates, straight from the Treasury (its site allows any origin).
+    function readYear(y) {
+        var url = 'https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/' + y +
+            '/all?type=daily_treasury_yield_curve&field_tdr_date_value=' + y + '&page&_format=csv';
+        var ctl = window.AbortController ? new AbortController() : null;
+        var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
+        return fetch(url, ctl ? { signal: ctl.signal } : undefined).then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.text();
+        }).then(function (text) {
+            clearTimeout(timer);
+            var lines = text.trim().split(/\r?\n/);
+            var head = lines[0].split(',').map(function (h) { return h.replace(/"/g, '').trim(); });
+            var best = null;
+            lines.slice(1).forEach(function (line) {
+                var cells = line.split(','), md = cells[0].split('/');
+                var d = new Date(+md[2], +md[0] - 1, +md[1]);
+                if (isNaN(d) || (best && d <= best.date)) return;
+                var row = { date: d };
+                for (var k in TERMS) {
+                    var v = parseFloat(cells[head.indexOf(TERMS[k].col)]);
+                    if (!isFinite(v)) return;
+                    row[k] = v;
+                }
+                best = row;
+            });
+            return best;
+        });
+    }
 
-    buttons.forEach(function (b) { b.addEventListener('click', function () { apply(b.dataset.preset); }); });
-    price.addEventListener('input', function () { setPreset(null); render(); });
-    [yld, growth].forEach(function (el) { el.addEventListener('input', render); });
-    tax.addEventListener('change', render);
+    function readRates() {
+        var y = new Date().getFullYear();
+        // Early January the new year's file can be empty: fall back a year.
+        return readYear(y).catch(function () { return null; }).then(function (r) { return r || readYear(y - 1); });
+    }
+
+    // One anonymous event per settled change, to see which presets and terms get used.
+    var sendTimer = null;
+    function track() {
+        clearTimeout(sendTimer);
+        sendTimer = setTimeout(function () {
+            if (!window.posthog || !window.posthog.capture) return;
+            window.posthog.capture('forever_changed', {
+                preset: current || 'custom',
+                price: parseFloat(price.value),
+                term: term.value,
+                yield: parseFloat(yld.value),
+                growth: parseFloat(growth.value) || 0
+            });
+        }, 1500);
+    }
+    function changed(fn) { return function () { touched = true; fn.apply(this, arguments); track(); }; }
+
+    load();
+    labelTerms();
+    render();
+
+    buttons.forEach(function (b) { b.addEventListener('click', changed(function () { apply(b.dataset.preset); })); });
+    price.addEventListener('input', changed(function () { setPreset(null); render(); }));
+    term.addEventListener('change', changed(function () { setTerm(term.value); }));
+    yld.addEventListener('input', changed(function () {
+        if (TERMS[term.value] && parseFloat(yld.value) !== rates[term.value]) { term.value = 'custom'; hintYield(); }
+        render();
+    }));
+    growth.addEventListener('input', changed(render));
+    tax.addEventListener('change', changed(render));
+
+    readRates().then(function (r) {
+        if (!r) throw new Error('no rows');
+        rates = r;
+        labelTerms();
+        // Typing a rate switches the term to custom, so a Treasury term here still follows today's rate.
+        if (TERMS[term.value]) yld.value = rates[term.value];
+        hintYield();
+        render();
+    }).catch(function (e) {
+        if (window.posthog && window.posthog.capture) window.posthog.capture('forever_rates_failed', { reason: String(e && e.message || e) });
+    });
 })();
 </script>
 </body>
